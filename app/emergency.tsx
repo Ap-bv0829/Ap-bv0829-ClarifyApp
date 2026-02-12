@@ -1,16 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+// import * as SMS from 'expo-sms';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert, Linking, SafeAreaView, ScrollView, StatusBar,
+    Alert,
+    Animated,
+    Linking,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import {
+    speakText,
+    startListening,
+    stopListening,
+    useSpeechRecognitionEvent,
+} from '../services/speechService';
 
 const CONTACTS_KEY = 'emergency_contacts';
+const DISTRESS_KEYWORDS = ['help', 'emergency', 'call 911', 'accident', 'hurt', 'pain', 'ambulance'];
 
 interface EmergencyContact {
     id: string;
@@ -25,9 +38,56 @@ export default function Emergency() {
     const [newName, setNewName] = useState('');
     const [newPhone, setNewPhone] = useState('');
 
+    // Voice & Auto-SOS State
+    const [isListening, setIsListening] = useState(false);
+    const [sosCountdown, setSosCountdown] = useState<number | null>(null);
+    const [isSmsAvailable, setIsSmsAvailable] = useState(false);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const countdownTimerRef = useRef<any>(null);
+
     useEffect(() => {
         loadContacts();
+        checkSmsAvailability();
+
+        // Cleanup on unmount
+        return () => {
+            stopAutoDetection();
+            if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
+        };
     }, []);
+
+    // Pulse animation for listening state
+    useEffect(() => {
+        if (isListening) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.2,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        } else {
+            pulseAnim.setValue(1);
+        }
+    }, [isListening]);
+
+    const checkSmsAvailability = async () => {
+        try {
+            const SMS = require('expo-sms');
+            const isAvailable = await SMS.isAvailableAsync();
+            setIsSmsAvailable(isAvailable);
+        } catch (error) {
+            console.log('Expo SMS native module not found');
+            setIsSmsAvailable(false);
+        }
+    };
 
     const loadContacts = async () => {
         try {
@@ -48,6 +108,107 @@ export default function Emergency() {
             console.error('Error saving contacts:', error);
         }
     };
+
+    // --- Voice Recognition Logic ---
+
+    useSpeechRecognitionEvent('result', (event) => {
+        if (!isListening || sosCountdown !== null) return;
+
+        const transcript = event.results[0]?.transcript.toLowerCase() || '';
+        console.log('Heard:', transcript);
+
+        // Check for distress keywords
+        const detectedKeyword = DISTRESS_KEYWORDS.find(keyword => transcript.includes(keyword));
+        if (detectedKeyword) {
+            console.log('Distress detected:', detectedKeyword);
+            startSOSCountdown();
+        }
+    });
+
+    useSpeechRecognitionEvent('error', (event) => {
+        // Ignore errors in continuous mode to keep listening
+        if (isListening && event.error !== 'not-allowed') {
+            console.log('Speech error (ignoring):', event.error);
+        } else if (event.error === 'not-allowed') {
+            setIsListening(false);
+            Alert.alert('Permission Denied', 'Microphone access is needed for auto-detection.');
+        }
+    });
+
+    const toggleAutoDetection = async () => {
+        if (isListening) {
+            await stopAutoDetection();
+        } else {
+            await startAutoDetection();
+        }
+    };
+
+    const startAutoDetection = async () => {
+        try {
+            await startListening();
+            setIsListening(true);
+            speakText('Emergency listening active. Say help or call 911 if you need assistance.');
+        } catch (error) {
+            console.error('Failed to start listening:', error);
+            Alert.alert('Error', 'Could not start voice detection.');
+        }
+    };
+
+    const stopAutoDetection = async () => {
+        await stopListening();
+        setIsListening(false);
+    };
+
+    // --- SOS Sequence Logic ---
+
+    const startSOSCountdown = () => {
+        if (sosCountdown !== null) return; // Already counting down
+
+        stopAutoDetection(); // Stop listening during countdown
+        setSosCountdown(10);
+        speakText('Emergency detected. Calling 911 in 10 seconds.');
+
+        let timeLeft = 10;
+        countdownTimerRef.current = setInterval(() => {
+            timeLeft -= 1;
+            setSosCountdown(timeLeft);
+
+            if (timeLeft <= 0) {
+                if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+                setSosCountdown(null);
+                executeSOS();
+            }
+        }, 1000);
+    };
+
+    const cancelSOS = () => {
+        if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+        setSosCountdown(null);
+        speakText('Emergency call cancelled.');
+        // Optional: restart listening automatically?
+        // startAutoDetection();
+    };
+
+    const executeSOS = async () => {
+        // 1. Send SMS to contacts
+        if (contacts.length > 0 && isSmsAvailable) {
+            const phoneNumbers = contacts.map(c => c.phone);
+            const message = `🆘 EMERGENCY: I need help! This is an automated alert from my ClarifyApp. Please call me or 911.`;
+
+            try {
+                // Note: On most devices this opens the SMS app pre-filled
+                const SMS = require('expo-sms');
+                await SMS.sendSMSAsync(phoneNumbers, message);
+            } catch (error) {
+                console.error('Failed to send SMS:', error);
+            }
+        }
+
+        // 2. Call 911 (User still needs to tap dial)
+        Linking.openURL('tel:911');
+    };
+
+    // --- Contact Management ---
 
     const addContact = () => {
         if (!newName.trim() || !newPhone.trim()) {
@@ -86,31 +247,16 @@ export default function Emergency() {
     };
 
     const callContact = (contact: EmergencyContact) => {
-        const phoneUrl = `tel:${contact.phone}`;
-        Linking.canOpenURL(phoneUrl)
-            .then((supported) => {
-                if (supported) {
-                    Linking.openURL(phoneUrl);
-                } else {
-                    Alert.alert('Cannot Call', 'Phone calls are not supported on this device.');
-                }
-            })
-            .catch((err) => console.error('Error making call:', err));
+        Linking.openURL(`tel:${contact.phone}`).catch(err => console.error('Error calling contact:', err));
     };
 
-    const callEmergency = () => {
+    const callEmergencyManual = () => {
         Alert.alert(
             '🚨 Call Emergency Services?',
-            'This will dial 911 (or your local emergency number).',
+            'This will dial 911.',
             [
                 { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Call 911',
-                    style: 'destructive',
-                    onPress: () => {
-                        Linking.openURL('tel:911');
-                    },
-                },
+                { text: 'Call 911', style: 'destructive', onPress: () => Linking.openURL('tel:911') },
             ]
         );
     };
@@ -118,6 +264,18 @@ export default function Emergency() {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#dc2626" />
+
+            {/* SOS Countdown Overlay */}
+            {sosCountdown !== null && (
+                <View style={styles.countdownOverlay}>
+                    <Text style={styles.countdownTitle}>🚨 EMERGENCY DETECTED</Text>
+                    <Text style={styles.countdownSub}>Calling 911 in</Text>
+                    <Text style={styles.countdownNumber}>{sosCountdown}</Text>
+                    <TouchableOpacity style={styles.cancelButton} onPress={cancelSOS}>
+                        <Text style={styles.cancelButtonText}>CANCEL</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {/* Header */}
             <View style={styles.header}>
@@ -128,17 +286,35 @@ export default function Emergency() {
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                {/* Big SOS Button */}
-                <TouchableOpacity style={styles.sosButton} onPress={callEmergency}>
-                    <Text style={styles.sosIcon}>🆘</Text>
-                    <Text style={styles.sosText}>CALL 911</Text>
-                    <Text style={styles.sosSubtext}>Tap for emergency services</Text>
+
+                {/* Auto-Detect Switch */}
+                <TouchableOpacity
+                    style={[styles.autoDetectButton, isListening && styles.autoDetectActive]}
+                    onPress={toggleAutoDetection}
+                >
+                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                        <Text style={styles.autoDetectIcon}>{isListening ? '🎙️' : '🔇'}</Text>
+                    </Animated.View>
+                    <View style={styles.autoDetectTextContainer}>
+                        <Text style={[styles.autoDetectTitle, isListening && styles.textWhite]}>
+                            {isListening ? 'Listening for Help...' : 'Auto-Detect Off'}
+                        </Text>
+                        <Text style={[styles.autoDetectSub, isListening && styles.textWhiteSub]}>
+                            {isListening ? 'Say "Help" or "Call 911"' : 'Tap to start voice monitoring'}
+                        </Text>
+                    </View>
                 </TouchableOpacity>
 
-                {/* My Emergency Contacts */}
+                {/* Big SOS Button */}
+                <TouchableOpacity style={styles.sosButton} onPress={callEmergencyManual}>
+                    <Text style={styles.sosIcon}>🆘</Text>
+                    <Text style={styles.sosText}>CALL 911</Text>
+                </TouchableOpacity>
+
+                {/* Contacts Section */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>My Emergency Contacts</Text>
+                        <Text style={styles.sectionTitle}>Emergency Contacts</Text>
                         <TouchableOpacity
                             style={styles.addButton}
                             onPress={() => setIsAdding(!isAdding)}
@@ -177,7 +353,7 @@ export default function Emergency() {
                     {contacts.length === 0 && !isAdding ? (
                         <View style={styles.emptyContacts}>
                             <Text style={styles.emptyText}>
-                                No emergency contacts yet.{'\n'}Tap "+ Add" to add family or caregivers.
+                                No contacts saved.{'\n'}Add family to notify them in emergencies.
                             </Text>
                         </View>
                     ) : (
@@ -202,14 +378,6 @@ export default function Emergency() {
                         ))
                     )}
                 </View>
-
-                {/* Tips */}
-                <View style={styles.tipsSection}>
-                    <Text style={styles.tipsTitle}>💡 Tips</Text>
-                    <Text style={styles.tipText}>• Tap a contact to call them instantly</Text>
-                    <Text style={styles.tipText}>• Long-press a contact to remove it</Text>
-                    <Text style={styles.tipText}>• Add family members and caregivers</Text>
-                </View>
             </ScrollView>
         </SafeAreaView>
     );
@@ -219,6 +387,45 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#dc2626',
+    },
+    countdownOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(220, 38, 38, 0.95)',
+        zIndex: 100,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    countdownTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    countdownSub: {
+        fontSize: 18,
+        color: '#FFFFFF',
+        opacity: 0.9,
+        marginBottom: 24,
+    },
+    countdownNumber: {
+        fontSize: 120,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        marginBottom: 40,
+    },
+    cancelButton: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 48,
+        paddingVertical: 20,
+        borderRadius: 32,
+        elevation: 10,
+    },
+    cancelButtonText: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#dc2626',
     },
     header: {
         flexDirection: 'row',
@@ -251,32 +458,63 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 40,
     },
+    autoDetectButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 24,
+        borderWidth: 2,
+        borderColor: '#E5E5E5',
+    },
+    autoDetectActive: {
+        backgroundColor: '#10b981',
+        borderColor: '#059669',
+    },
+    autoDetectIcon: {
+        fontSize: 32,
+        marginRight: 16,
+    },
+    autoDetectTextContainer: {
+        flex: 1,
+    },
+    autoDetectTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1A1A1A',
+    },
+    autoDetectSub: {
+        fontSize: 13,
+        color: '#666',
+    },
+    textWhite: {
+        color: '#FFFFFF',
+    },
+    textWhiteSub: {
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
     sosButton: {
         backgroundColor: '#dc2626',
         borderRadius: 24,
         paddingVertical: 40,
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 32,
+        elevation: 8,
         shadowColor: '#dc2626',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
         shadowRadius: 16,
-        elevation: 12,
     },
     sosIcon: {
-        fontSize: 64,
-        marginBottom: 12,
+        fontSize: 56,
+        marginBottom: 8,
     },
     sosText: {
         fontSize: 32,
         fontWeight: '800',
         color: '#FFFFFF',
         letterSpacing: 2,
-    },
-    sosSubtext: {
-        fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.8)',
-        marginTop: 8,
     },
     section: {
         marginBottom: 24,
@@ -332,15 +570,15 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     emptyContacts: {
-        backgroundColor: '#F9F9F9',
-        borderRadius: 16,
         padding: 24,
         alignItems: 'center',
+        backgroundColor: '#F9F9F9',
+        borderRadius: 16,
     },
     emptyText: {
-        fontSize: 15,
-        color: '#666',
         textAlign: 'center',
+        color: '#999',
+        fontSize: 15,
         lineHeight: 22,
     },
     contactCard: {
@@ -350,20 +588,20 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
+        elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     contactIcon: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: '#FEE2E2',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 14,
+        marginRight: 16,
     },
     contactIconText: {
         fontSize: 24,
@@ -372,40 +610,24 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     contactName: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: '700',
         color: '#1A1A1A',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     contactPhone: {
         fontSize: 14,
         color: '#666',
     },
     callIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#10b981',
         justifyContent: 'center',
         alignItems: 'center',
     },
     callIconText: {
         fontSize: 20,
-    },
-    tipsSection: {
-        backgroundColor: '#FEF3C7',
-        borderRadius: 16,
-        padding: 16,
-    },
-    tipsTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#92400E',
-        marginBottom: 12,
-    },
-    tipText: {
-        fontSize: 14,
-        color: '#92400E',
-        lineHeight: 22,
     },
 });

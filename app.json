@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow ClarifyApp to use speech recognition to understand what you say.",
+        "NSMicrophoneUsageDescription": "Allow ClarifyApp to use the microphone to hear you."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +27,9 @@
       "package": "com.anonymous.ClarifyApp",
       "permissions": [
         "NOTIFICATIONS",
-        "SCHEDULE_EXACT_ALARM"
+        "SCHEDULE_EXACT_ALARM",
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -43,11 +49,24 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "@jamsch/expo-speech-recognition",
+        {
+          "microphonePermission": "Allow ClarifyApp to use the microphone to hear you.",
+          "speechRecognitionPermission": "Allow ClarifyApp to use speech recognition to understand what you say."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d9975e22-42f3-4c9d-a9d9-a744f926dddc"
+      }
     }
   }
 }

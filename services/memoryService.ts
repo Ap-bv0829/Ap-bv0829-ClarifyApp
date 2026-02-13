@@ -10,6 +10,11 @@ export interface PersonMemory {
     audioUri: string;
     transcript: string;
     createdAt: number;
+    // New Social Memory Fields
+    tags: string[];         // e.g., "Work", "Hiking", "Family"
+    context: string;        // e.g., "Met at coffee shop", "High school reunion"
+    topics: string[];       // e.g., "Gardening", "Politics"
+    interactionDate: number; // When the meeting happened (defaults to creation)
 }
 
 /**
@@ -27,7 +32,10 @@ export async function saveMemory(
     transcript: string,
     name: string,
     relationship: string = '',
-    details: string = ''
+    details: string = '',
+    tags: string[] = [],
+    context: string = '',
+    topics: string[] = []
 ): Promise<PersonMemory> {
     const memories = await getMemories();
 
@@ -39,6 +47,10 @@ export async function saveMemory(
         audioUri,
         transcript,
         createdAt: Date.now(),
+        tags,
+        context: context.trim(),
+        topics,
+        interactionDate: Date.now(),
     };
 
     memories.unshift(newMemory); // Add to beginning
@@ -73,7 +85,10 @@ export async function searchMemories(query: string): Promise<PersonMemory[]> {
         memory.name.toLowerCase().includes(lowerQuery) ||
         memory.relationship.toLowerCase().includes(lowerQuery) ||
         memory.details.toLowerCase().includes(lowerQuery) ||
-        memory.transcript.toLowerCase().includes(lowerQuery)
+        memory.transcript.toLowerCase().includes(lowerQuery) ||
+        memory.context?.toLowerCase().includes(lowerQuery) ||
+        memory.tags?.some(tag => tag.toLowerCase().includes(lowerQuery)) ||
+        memory.topics?.some(topic => topic.toLowerCase().includes(lowerQuery))
     );
 }
 

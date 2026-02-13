@@ -7,6 +7,9 @@ interface PersonInfo {
     name: string;
     relationship: string;
     details: string;
+    context: string;
+    tags: string[];
+    topics: string[];
 }
 
 /**
@@ -21,21 +24,26 @@ export async function analyzeConversationForPeople(transcript: string): Promise<
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-        const prompt = `Analyze this conversation and extract ONLY if someone is being introduced or described:
+        const prompt = `Analyze this conversation and extract details about a person being discussed or introduced. 
+This is for a "Social Memory" aid to help the user remember friends, family, and acquaintances.
 
+Conversation:
 "${transcript}"
 
-If this mentions a SPECIFIC PERSON with their name and details, respond with JSON:
+If this mentions a SPECIFIC PERSON with their name, respond with JSON:
 {
   "name": "person's name",
-  "relationship": "relationship to speaker (if mentioned)",
-  "details": "key details about them"
+  "relationship": "relationship to speaker (e.g., friend, coworker, nephew)",
+  "details": "key facts (job, hobbies, age, etc.)",
+  "context": "where/when they met or current location (e.g., 'Met at coffee shop', 'High school reunion')",
+  "topics": ["topic1", "topic2"], // e.g., ["Gardening", "Politics", "Project Alpha"]
+  "tags": ["tag1", "tag2"] // e.g., ["Work", "Family", "Hiking Group"]
 }
 
 If this is just a question like "Who is X?" or general conversation with NO new person information, respond with:
 null
 
-IMPORTANT: Only extract if there's NEW information about a person, not queries.`;
+IMPORTANT: Extract as much as possible. Infer tags from the context (e.g., if talking about spreadsheets, add "Work").`;
 
         const result = await model.generateContent(prompt);
         const response = result.response.text().trim();
@@ -54,6 +62,9 @@ IMPORTANT: Only extract if there's NEW information about a person, not queries.`
                     name: personInfo.name,
                     relationship: personInfo.relationship || '',
                     details: personInfo.details || '',
+                    context: personInfo.context || '',
+                    tags: personInfo.tags || [],
+                    topics: personInfo.topics || [],
                 };
             }
         }

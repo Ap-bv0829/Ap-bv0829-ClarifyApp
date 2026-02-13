@@ -5,7 +5,7 @@ export interface SavedScan {
     id: string;
     timestamp: number;
     imageUri: string;
-    analysis: MedicineAnalysis;
+    analysis: MedicineAnalysis[];
 }
 
 const STORAGE_KEY = 'recent_scans';
@@ -13,7 +13,7 @@ const STORAGE_KEY = 'recent_scans';
 /**
  * Save a new scan to the recent list
  */
-export const saveScan = async (analysis: MedicineAnalysis, imageUri: string): Promise<SavedScan> => {
+export const saveScan = async (analysis: MedicineAnalysis[], imageUri: string): Promise<SavedScan> => {
     try {
         const newScan: SavedScan = {
             id: Date.now().toString(),
@@ -40,7 +40,15 @@ export const saveScan = async (analysis: MedicineAnalysis, imageUri: string): Pr
 export const getRecentScans = async (): Promise<SavedScan[]> => {
     try {
         const json = await AsyncStorage.getItem(STORAGE_KEY);
-        return json ? JSON.parse(json) : [];
+        if (!json) return [];
+
+        const data = JSON.parse(json);
+
+        // Migration: Ensure all items have analysis as an array
+        return data.map((item: any) => ({
+            ...item,
+            analysis: Array.isArray(item.analysis) ? item.analysis : [item.analysis]
+        }));
     } catch (error) {
         console.error('Failed to load scans:', error);
         return [];

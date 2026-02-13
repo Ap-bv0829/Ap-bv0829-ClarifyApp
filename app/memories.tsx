@@ -118,11 +118,20 @@ export default function Memories() {
             if (personInfo && personInfo.name) {
                 // Check if we already saved this person recently
                 if (personInfo.name.toLowerCase() !== lastSavedPerson.toLowerCase()) {
-                    await saveMemory('', text, personInfo.name, personInfo.relationship, personInfo.details);
+                    await saveMemory(
+                        '',
+                        text,
+                        personInfo.name,
+                        personInfo.relationship,
+                        personInfo.details,
+                        personInfo.tags,
+                        personInfo.context,
+                        personInfo.topics
+                    );
                     await loadMemories();
                     setLastSavedPerson(personInfo.name);
                     setStatusText(`✅ Saved: ${personInfo.name}`);
-                    speakText(`Got it! I'll remember ${personInfo.name}.`);
+                    speakText(`Got it! I've added ${personInfo.name} to your social circle.`);
 
                     // Clear transcript after successful save
                     setFullTranscript('');
@@ -325,17 +334,36 @@ export default function Memories() {
                                     style={styles.memoryCard}
                                     onLongPress={() => handleDeleteMemory(item)}
                                 >
-                                    <View style={styles.avatarCircle}>
-                                        <Text style={styles.avatarInitials}>{item.name.substring(0, 2).toUpperCase()}</Text>
+                                    <View style={styles.cardHeader}>
+                                        <View style={styles.avatarCircle}>
+                                            <Text style={styles.avatarInitials}>{item.name.substring(0, 2).toUpperCase()}</Text>
+                                        </View>
+                                        <View style={styles.headerInfo}>
+                                            <Text style={styles.cardName}>{item.name}</Text>
+                                            <Text style={styles.cardRelation}>{item.relationship || 'Connection'}</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                                     </View>
-                                    <View style={styles.cardInfo}>
-                                        <Text style={styles.cardName}>{item.name}</Text>
-                                        <Text style={styles.cardRelation}>{item.relationship || 'Friend'}</Text>
-                                        <Text style={styles.cardDetails} numberOfLines={2}>
+
+                                    <View style={styles.cardBody}>
+                                        {item.context ? (
+                                            <Text style={styles.cardContext}>📍 {item.context}</Text>
+                                        ) : null}
+
+                                        <Text style={styles.cardResult} numberOfLines={3}>
                                             {item.details || item.transcript}
                                         </Text>
+
+                                        {item.tags && item.tags.length > 0 && (
+                                            <View style={styles.tagsContainer}>
+                                                {item.tags.map((tag, index) => (
+                                                    <View key={index} style={styles.tagChip}>
+                                                        <Text style={styles.tagText}>#{tag}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        )}
                                     </View>
-                                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                                 </TouchableOpacity>
                             )}
                             ListEmptyComponent={
@@ -381,15 +409,22 @@ const styles = StyleSheet.create({
 
     // Memories Overlay
     memoriesOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 100, backgroundColor: '#F3F4F6', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 20 },
-    overlayTitle: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 16, marginLeft: 8 },
+    overlayTitle: { fontSize: 24, fontWeight: '800', color: '#111827', marginBottom: 16, marginLeft: 8 },
     listContent: { paddingBottom: 40 },
-    memoryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 16, borderRadius: 20, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-    avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-    avatarInitials: { fontSize: 18, fontWeight: '700', color: '#1e3a8a' },
-    cardInfo: { flex: 1 },
-    cardName: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
-    cardRelation: { fontSize: 12, fontWeight: '600', color: '#10b981', marginBottom: 2 },
-    cardDetails: { fontSize: 13, color: '#6B7280' },
+    memoryCard: { backgroundColor: '#FFF', padding: 16, borderRadius: 20, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    avatarInitials: { fontSize: 20, fontWeight: '700', color: '#1e3a8a' },
+    headerInfo: { flex: 1 },
+    cardName: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+    cardRelation: { fontSize: 14, fontWeight: '600', color: '#10b981' },
+    cardBody: { marginTop: 4 },
+    cardContext: { fontSize: 13, fontWeight: '600', color: '#4B5563', marginBottom: 4 },
+    cardResult: { fontSize: 14, color: '#374151', lineHeight: 20, marginBottom: 8 },
+    tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
+    tagChip: { backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 6, marginBottom: 4 },
+    tagText: { fontSize: 12, color: '#3730A3', fontWeight: '600' },
+
     emptyState: { alignItems: 'center', marginTop: 40 },
     emptyStateText: { fontSize: 18, fontWeight: '600', color: '#9CA3AF' },
     emptyStateSub: { fontSize: 14, color: '#D1D5DB', marginTop: 8 },

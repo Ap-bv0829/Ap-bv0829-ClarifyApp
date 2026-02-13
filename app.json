@@ -29,7 +29,9 @@
         "NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
         "RECORD_AUDIO",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
@@ -38,6 +40,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow ClarifyApp to use your location to share it in emergencies."
+        }
+      ],
       [
         "expo-splash-screen",
         {

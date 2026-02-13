@@ -12,6 +12,7 @@ export interface MedicineAnalysis {
     commonUses: string;
     dosage: string;
     warnings: string;
+    recommendedTime?: string; // Format: "HH:MM" 24-hour
 }
 
 /**
@@ -30,22 +31,18 @@ export async function analyzeMedicineImage(imageUri: string): Promise<MedicineAn
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         // Create the prompt for medicine identification
-        const prompt = `You are a medical assistant AI. Analyze this image of medicine/medication and provide the following information in a structured format:
+        const prompt = `You are a medical assistant AI. Analyze this image of medicine/medication and provide the following information in a structured JSON format.
 
-1. Medicine Name: (Brand name and generic name if visible)
-2. Active Ingredients: (Main active pharmaceutical ingredients)
-3. Common Uses: (What this medicine is typically used for)
-4. Dosage: (Typical dosage information if visible on the packaging)
-5. Warnings: (Important warnings or precautions)
+Return ONLY a valid JSON object with these exact keys:
+- medicineName: (Brand name and generic name if visible)
+- activeIngredients: (Main active pharmaceutical ingredients)
+- commonUses: (What this medicine is typically used for)
+- dosage: (Typical dosage information if visible on the packaging)
+- warnings: (Important warnings or precautions)
+- recommendedTime: (If a specific time is mentioned like "8 AM" or "bedtime", return it in "HH:MM" 24-hour format. E.g., "08:00" or "22:00". If no specific time is mentioned, return null)
 
-If you cannot clearly identify the medicine, please state that clearly and provide any partial information you can see.
-
-Format your response as follows:
-Medicine Name: [name]
-Active Ingredients: [ingredients]
-Common Uses: [uses]
-Dosage: [dosage]
-Warnings: [warnings]`;
+If you cannot clearly identify the medicine, state that in the fields or provide partial info.
+Do NOT use Markdown code blocks. Just return the raw JSON string.`;
 
         // Send the image and prompt to Gemini
         const result = await model.generateContent([
@@ -76,20 +73,32 @@ Warnings: [warnings]`;
  * Parses the AI response into a structured format
  */
 function parseMedicineResponse(text: string): MedicineAnalysis {
-    // Simple parsing - extract information between labels
-    const extractField = (label: string): string => {
-        const regex = new RegExp(`${label}:\\s*(.+?)(?=\\n[A-Z]|$)`, 's');
-        const match = text.match(regex);
-        return match ? match[1].trim() : 'Not available';
-    };
+    try {
+        // Clean the text to ensure it's valid JSON
+        // Remove markdown code blocks if present (e.g., ```json ... ```)
+        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    return {
-        medicineName: extractField('Medicine Name'),
-        activeIngredients: extractField('Active Ingredients'),
-        commonUses: extractField('Common Uses'),
-        dosage: extractField('Dosage'),
-        warnings: extractField('Warnings'),
-    };
+        const parsed = JSON.parse(cleanText);
+
+        return {
+            medicineName: parsed.medicineName || 'Unknown Medicine',
+            activeIngredients: parsed.activeIngredients || 'Not identified',
+            commonUses: parsed.commonUses || 'Not available',
+            dosage: parsed.dosage || 'Not visible',
+            warnings: parsed.warnings || 'Consult a doctor',
+            recommendedTime: parsed.recommendedTime || undefined,
+        };
+    } catch (e) {
+        console.error('Failed to parse Gemini JSON response:', text);
+        // Fallback to simple text extraction if JSON parsing fails
+        return {
+            medicineName: 'Error parsing results',
+            activeIngredients: 'Could not structure the data',
+            commonUses: 'Please try again',
+            dosage: '',
+            warnings: text.substring(0, 100) + '...', // Show raw text snippet
+        };
+    }
 }
 
 export interface PersonInfo {

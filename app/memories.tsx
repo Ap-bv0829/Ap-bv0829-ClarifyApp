@@ -1,15 +1,16 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
+    Animated,
     FlatList,
     SafeAreaView,
-    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { analyzeConversationForPeople, isQueryAboutPerson } from '../services/aiMemoryService';
 import {
@@ -231,268 +232,165 @@ export default function Memories() {
         );
     };
 
+    // Animation Ref
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        if (isListening) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+                ])
+            ).start();
+        } else {
+            pulseAnim.setValue(1);
+        }
+    }, [isListening]);
+
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            <StatusBar barStyle="dark-content" backgroundColor="#F3F4F6" />
 
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Text style={styles.backText}>← Back</Text>
+                    <Ionicons name="arrow-back" size={24} color="#1e3a8a" />
+                    <Text style={styles.backText}>Back</Text>
                 </TouchableOpacity>
-                <Text style={styles.title}>Remember People</Text>
+                <Text style={styles.headerTitle}>Remember People</Text>
                 <TouchableOpacity
-                    style={styles.listButton}
+                    style={styles.historyButton}
                     onPress={() => setShowMemories(!showMemories)}
                 >
-                    <Text style={styles.listButtonText}>
-                        {showMemories ? '✕' : `📋 ${memories.length}`}
-                    </Text>
+                    <Ionicons name={showMemories ? "close" : "list"} size={24} color="#1e3a8a" />
                 </TouchableOpacity>
             </View>
 
-            {/* Memories List (when toggled) */}
-            {showMemories && (
-                <View style={styles.memoriesPanel}>
-                    <FlatList
-                        data={memories}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.memoryItem}
-                                onLongPress={() => handleDeleteMemory(item)}
-                            >
-                                <Text style={styles.memoryName}>{item.name}</Text>
-                                <Text style={styles.memoryDetails} numberOfLines={1}>
-                                    {item.relationship && `${item.relationship} • `}
-                                    {item.details || item.transcript}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={
-                            <Text style={styles.emptyText}>No memories yet</Text>
-                        }
-                    />
-                </View>
-            )}
+            {/* Main Content Area */}
+            <View style={styles.content}>
 
-            {/* Main Content */}
-            <View style={styles.mainContent}>
-                {/* Status Display */}
-                <View style={styles.statusContainer}>
-                    <Text style={styles.statusIcon}>
-                        {isProcessing ? '🤖' : isListening ? '🎧' : '👂'}
+                {/* Status Indicator */}
+                <View style={styles.statusSection}>
+                    <Text style={styles.statusEmoji}>
+                        {isProcessing ? '🤖' : isListening ? '👂' : 'Ready'}
                     </Text>
                     <Text style={styles.statusText}>{statusText}</Text>
-
-                    {/* Live Transcript */}
-                    {transcript && isListening && (
-                        <View style={styles.transcriptBox}>
-                            <ScrollView style={styles.transcriptScroll}>
-                                <Text style={styles.transcriptText}>"{transcript}"</Text>
-                            </ScrollView>
-                        </View>
-                    )}
-
-                    {/* Instructions */}
-                    {!isListening && (
-                        <View style={styles.instructionsBox}>
-                            <Text style={styles.instructionTitle}>How it works:</Text>
-                            <Text style={styles.instructionText}>
-                                • Tap START to begin listening{'\n'}
-                                • Talk naturally about people{'\n'}
-                                • AI auto-saves their info{'\n'}
-                                • Ask "Who is [name]?" anytime
-                            </Text>
-                        </View>
-                    )}
                 </View>
 
-                {/* Big Button */}
-                <View style={styles.buttonsContainer}>
+                {/* Microphone / Action Button */}
+                <View style={styles.micContainer}>
                     {isListening ? (
-                        <TouchableOpacity
-                            style={styles.stopButton}
-                            onPress={handleStopListening}
-                        >
-                            <Text style={styles.bigButtonIcon}>⏹️</Text>
-                            <Text style={styles.bigButtonText}>STOP LISTENING</Text>
+                        <TouchableOpacity onPress={handleStopListening} activeOpacity={0.8}>
+                            <Animated.View style={[styles.micCircle, styles.micActive, { transform: [{ scale: pulseAnim }] }]}>
+                                <Ionicons name="mic" size={48} color="#FFF" />
+                            </Animated.View>
+                            <Text style={styles.micLabel}>Tap to Stop</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity
-                            style={styles.startButton}
-                            onPress={handleStartListening}
-                        >
-                            <Text style={styles.bigButtonIcon}>🎤</Text>
-                            <Text style={styles.bigButtonText}>START LISTENING</Text>
-                            <Text style={styles.bigButtonHint}>Continuous open mic</Text>
+                        <TouchableOpacity onPress={handleStartListening} activeOpacity={0.8}>
+                            <View style={[styles.micCircle, styles.micInactive]}>
+                                <Ionicons name="mic-outline" size={48} color="#1e3a8a" />
+                            </View>
+                            <Text style={styles.micLabel}>Tap to Listen</Text>
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* Transcript Bubble */}
+                {transcript ? (
+                    <View style={styles.transcriptBubble}>
+                        <Text style={styles.transcriptText}>"{transcript}"</Text>
+                    </View>
+                ) : (
+                    !showMemories && (
+                        <View style={styles.tipsContainer}>
+                            <Text style={styles.tipTitle}>Try saying:</Text>
+                            <Text style={styles.tipText}>"This is Mark, he is my nephew."</Text>
+                            <Text style={styles.tipText}>"Who is Mark?"</Text>
+                        </View>
+                    )
+                )}
+
+                {/* Memories Overlay/List */}
+                {showMemories && (
+                    <View style={styles.memoriesOverlay}>
+                        <Text style={styles.overlayTitle}>Your Memories ({memories.length})</Text>
+                        <FlatList
+                            data={memories}
+                            keyExtractor={(item) => item.id}
+                            contentContainerStyle={styles.listContent}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.memoryCard}
+                                    onLongPress={() => handleDeleteMemory(item)}
+                                >
+                                    <View style={styles.avatarCircle}>
+                                        <Text style={styles.avatarInitials}>{item.name.substring(0, 2).toUpperCase()}</Text>
+                                    </View>
+                                    <View style={styles.cardInfo}>
+                                        <Text style={styles.cardName}>{item.name}</Text>
+                                        <Text style={styles.cardRelation}>{item.relationship || 'Friend'}</Text>
+                                        <Text style={styles.cardDetails} numberOfLines={2}>
+                                            {item.details || item.transcript}
+                                        </Text>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                                </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyStateText}>No memories yet.</Text>
+                                    <Text style={styles.emptyStateSub}>Start close to the microphone.</Text>
+                                </View>
+                            }
+                        />
+                    </View>
+                )}
             </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 12,
-    },
-    backButton: {
-        paddingVertical: 8,
-    },
-    backText: {
-        fontSize: 16,
-        color: '#10b981',
-        fontWeight: '600',
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1A1A1A',
-    },
-    listButton: {
-        backgroundColor: '#F5F5F5',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
-    listButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#666',
-    },
-    memoriesPanel: {
-        maxHeight: 200,
-        backgroundColor: '#F9F9F9',
-        marginHorizontal: 20,
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-    },
-    memoryItem: {
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E5E5',
-    },
-    memoryName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1A1A1A',
-    },
-    memoryDetails: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 2,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: '#999',
-        textAlign: 'center',
-        paddingVertical: 20,
-    },
-    mainContent: {
-        flex: 1,
-        justifyContent: 'space-between',
-        padding: 20,
-    },
-    statusContainer: {
-        alignItems: 'center',
-        paddingVertical: 20,
-    },
-    statusIcon: {
-        fontSize: 80,
-        marginBottom: 20,
-    },
-    statusText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1A1A1A',
-        textAlign: 'center',
-        paddingHorizontal: 20,
-    },
-    transcriptBox: {
-        marginTop: 20,
-        backgroundColor: '#F5F5F5',
-        borderRadius: 12,
-        padding: 16,
-        width: '100%',
-        maxHeight: 150,
-    },
-    transcriptScroll: {
-        maxHeight: 120,
-    },
-    transcriptText: {
-        fontSize: 16,
-        color: '#666',
-        fontStyle: 'italic',
-        lineHeight: 24,
-    },
-    instructionsBox: {
-        marginTop: 30,
-        backgroundColor: '#F0F9FF',
-        borderRadius: 12,
-        padding: 20,
-        width: '100%',
-    },
-    instructionTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1A1A1A',
-        marginBottom: 12,
-    },
-    instructionText: {
-        fontSize: 14,
-        color: '#666',
-        lineHeight: 22,
-    },
-    buttonsContainer: {
-        paddingBottom: 20,
-    },
-    startButton: {
-        backgroundColor: '#10b981',
-        borderRadius: 24,
-        paddingVertical: 32,
-        alignItems: 'center',
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    stopButton: {
-        backgroundColor: '#ef4444',
-        borderRadius: 24,
-        paddingVertical: 32,
-        alignItems: 'center',
-        shadowColor: '#ef4444',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 8,
-    },
-    bigButtonIcon: {
-        fontSize: 48,
-        marginBottom: 8,
-    },
-    bigButtonText: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#FFFFFF',
-        letterSpacing: 1,
-    },
-    bigButtonHint: {
-        fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.8)',
-        marginTop: 4,
-    },
+    container: { flex: 1, backgroundColor: '#F3F4F6' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 10, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+    backButton: { flexDirection: 'row', alignItems: 'center' },
+    backText: { fontSize: 16, fontWeight: '600', color: '#1e3a8a', marginLeft: 4 },
+    headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+    historyButton: { padding: 8 },
+
+    content: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingTop: 40, paddingBottom: 20 },
+
+    statusSection: { alignItems: 'center', marginBottom: 20 },
+    statusEmoji: { fontSize: 40, marginBottom: 8 },
+    statusText: { fontSize: 16, fontWeight: '600', color: '#374151', paddingHorizontal: 40, textAlign: 'center' },
+
+    micContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
+    micCircle: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center', elevation: 10, shadowColor: '#1e3a8a', shadowOpacity: 0.3, shadowRadius: 15, shadowOffset: { width: 0, height: 8 } },
+    micActive: { backgroundColor: '#ef4444' }, // Red for recording
+    micInactive: { backgroundColor: '#FFF', borderWidth: 4, borderColor: '#1e3a8a' },
+    micLabel: { marginTop: 16, fontSize: 16, fontWeight: '600', color: '#6B7280' },
+
+    transcriptBubble: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginHorizontal: 24, maxWidth: '90%', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    transcriptText: { fontSize: 18, color: '#1F2937', fontStyle: 'italic', textAlign: 'center', lineHeight: 26 },
+
+    tipsContainer: { alignItems: 'center', opacity: 0.6 },
+    tipTitle: { fontSize: 14, fontWeight: '700', color: '#6B7280', marginBottom: 8 },
+    tipText: { fontSize: 14, color: '#9CA3AF', marginBottom: 4 },
+
+    // Memories Overlay
+    memoriesOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 100, backgroundColor: '#F3F4F6', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 20 },
+    overlayTitle: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 16, marginLeft: 8 },
+    listContent: { paddingBottom: 40 },
+    memoryCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 16, borderRadius: 20, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+    avatarInitials: { fontSize: 18, fontWeight: '700', color: '#1e3a8a' },
+    cardInfo: { flex: 1 },
+    cardName: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
+    cardRelation: { fontSize: 12, fontWeight: '600', color: '#10b981', marginBottom: 2 },
+    cardDetails: { fontSize: 13, color: '#6B7280' },
+    emptyState: { alignItems: 'center', marginTop: 40 },
+    emptyStateText: { fontSize: 18, fontWeight: '600', color: '#9CA3AF' },
+    emptyStateSub: { fontSize: 14, color: '#D1D5DB', marginTop: 8 },
 });

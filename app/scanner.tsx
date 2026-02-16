@@ -3,7 +3,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { analyzeInteractions, analyzeMedicineImage, InteractionReport, MedicineAnalysis } from '../services/gemini';
 import { saveMedication } from '../services/medicationStorage';
 import { getRecentScans, SavedScan, saveScan } from '../services/storage';
@@ -108,11 +108,20 @@ const RecentScansModal = ({ visible, onClose, onSelect }: RecentScansModalProps)
     );
 };
 
+// Alarm tone definitions
+const ALARM_TONES = [
+    { id: 'gentle', name: 'Gentle', icon: 'musical-note', pattern: [0, 300, 200, 300], color: '#10B981' },
+    { id: 'standard', name: 'Standard', icon: 'notifications', pattern: [0, 400, 200, 400, 200, 400], color: '#0369A1' },
+    { id: 'urgent', name: 'Urgent', icon: 'alert-circle', pattern: [0, 200, 100, 200, 100, 200, 100, 200], color: '#F59E0B' },
+    { id: 'alarm', name: 'Alarm', icon: 'alarm', pattern: [0, 500, 100, 500, 100, 500, 100, 500], color: '#EF4444' },
+    { id: 'silent', name: 'Silent', icon: 'volume-mute', pattern: [0], color: '#64748B' },
+];
+
 // Custom Time Picker
 interface CustomTimePickerProps {
     visible: boolean;
     onClose: () => void;
-    onConfirm: (hour: number, minute: number) => void;
+    onConfirm: (hour: number, minute: number, toneId: string) => void;
     medicineName?: string;
 }
 
@@ -120,12 +129,22 @@ const CustomTimePicker = ({ visible, onClose, onConfirm, medicineName }: CustomT
     const [hour, setHour] = useState(8);
     const [minute, setMinute] = useState(0);
     const [isAm, setIsAm] = useState(true);
+    const [selectedTone, setSelectedTone] = useState('standard');
+
+    const previewTone = (toneId: string) => {
+        setSelectedTone(toneId);
+        const tone = ALARM_TONES.find(t => t.id === toneId);
+        if (!tone || toneId === 'silent') return;
+
+        // Vibrate with the tone's pattern as preview
+        Vibration.vibrate(tone.pattern);
+    };
 
     const handleConfirm = () => {
         let finalHour = hour;
         if (!isAm && hour < 12) finalHour += 12;
         if (isAm && hour === 12) finalHour = 0;
-        onConfirm(finalHour, minute);
+        onConfirm(finalHour, minute, selectedTone);
         onClose();
     };
 
@@ -139,16 +158,16 @@ const CustomTimePicker = ({ visible, onClose, onConfirm, medicineName }: CustomT
                     <View style={styles.timeSelectRow}>
                         {/* Hour */}
                         <View style={styles.timeCol}>
-                            <TouchableOpacity onPress={() => setHour(h => h === 12 ? 1 : h + 1)}><Ionicons name="chevron-up" size={24} color="#4facfe" /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setHour(h => h === 12 ? 1 : h + 1)}><Ionicons name="chevron-up" size={24} color="#0369A1" /></TouchableOpacity>
                             <Text style={styles.timeDigit}>{hour.toString().padStart(2, '0')}</Text>
-                            <TouchableOpacity onPress={() => setHour(h => h === 1 ? 12 : h - 1)}><Ionicons name="chevron-down" size={24} color="#4facfe" /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setHour(h => h === 1 ? 12 : h - 1)}><Ionicons name="chevron-down" size={24} color="#0369A1" /></TouchableOpacity>
                         </View>
                         <Text style={styles.timeSeparator}>:</Text>
                         {/* Minute */}
                         <View style={styles.timeCol}>
-                            <TouchableOpacity onPress={() => setMinute(m => m >= 55 ? 0 : m + 5)}><Ionicons name="chevron-up" size={24} color="#4facfe" /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setMinute(m => m >= 55 ? 0 : m + 5)}><Ionicons name="chevron-up" size={24} color="#0369A1" /></TouchableOpacity>
                             <Text style={styles.timeDigit}>{minute.toString().padStart(2, '0')}</Text>
-                            <TouchableOpacity onPress={() => setMinute(m => m < 5 ? 55 : m - 5)}><Ionicons name="chevron-down" size={24} color="#4facfe" /></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setMinute(m => m < 5 ? 55 : m - 5)}><Ionicons name="chevron-down" size={24} color="#0369A1" /></TouchableOpacity>
                         </View>
                         {/* AM/PM */}
                         <View style={styles.amPmCol}>
@@ -156,6 +175,36 @@ const CustomTimePicker = ({ visible, onClose, onConfirm, medicineName }: CustomT
                             <TouchableOpacity onPress={() => setIsAm(false)} style={[styles.amPmBox, !isAm && styles.amPmSelected]}><Text style={[styles.amPmLabel, !isAm && styles.amPmLabelSelected]}>PM</Text></TouchableOpacity>
                         </View>
                     </View>
+
+                    {/* Alarm Tone Selector */}
+                    <Text style={styles.toneLabel}>ALARM TONE</Text>
+                    <View style={styles.toneGrid}>
+                        {ALARM_TONES.map(tone => (
+                            <TouchableOpacity
+                                key={tone.id}
+                                style={[
+                                    styles.toneItem,
+                                    selectedTone === tone.id && { borderColor: tone.color, backgroundColor: `${tone.color}15` },
+                                ]}
+                                onPress={() => previewTone(tone.id)}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons
+                                    name={tone.icon as any}
+                                    size={20}
+                                    color={selectedTone === tone.id ? tone.color : '#94A3B8'}
+                                />
+                                <Text style={[
+                                    styles.toneName,
+                                    selectedTone === tone.id && { color: tone.color, fontWeight: '800' },
+                                ]}>{tone.name}</Text>
+                                {selectedTone === tone.id && (
+                                    <Ionicons name="checkmark-circle" size={14} color={tone.color} />
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
                     <View style={styles.pickerBtnRow}>
                         <TouchableOpacity style={styles.pickerBtnCancel} onPress={onClose}><Text style={styles.pickerBtnTextCancel}>Cancel</Text></TouchableOpacity>
                         <TouchableOpacity style={styles.pickerBtnConfirm} onPress={handleConfirm}><Text style={styles.pickerBtnTextConfirm}>Save</Text></TouchableOpacity>
@@ -237,7 +286,7 @@ export default function Scanner() {
         return status === 'granted';
     };
 
-    const scheduleReminder = async (medicineName: string, hour: number, minute: number, isAuto: boolean = false) => {
+    const scheduleReminder = async (medicineName: string, hour: number, minute: number, isAuto: boolean = false, toneId: string = 'standard') => {
         try {
             const hasPermission = await requestNotificationPermissions();
             if (!hasPermission) {
@@ -251,14 +300,18 @@ export default function Scanner() {
             if (scheduledTime <= now) scheduledTime.setDate(scheduledTime.getDate() + 1);
 
             const secondsUntil = Math.floor((scheduledTime.getTime() - now.getTime()) / 1000);
+            const tone = ALARM_TONES.find(t => t.id === toneId) || ALARM_TONES[1];
 
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: '💊 Medicine Reminder',
                     body: `It's time for your ${medicineName}`,
-                    sound: true,
-                    data: { medicine: medicineName },
-                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                    sound: toneId !== 'silent',
+                    data: { medicine: medicineName, tone: toneId },
+                    priority: toneId === 'urgent' || toneId === 'alarm'
+                        ? Notifications.AndroidNotificationPriority.MAX
+                        : Notifications.AndroidNotificationPriority.HIGH,
+                    vibrate: tone.pattern,
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -268,7 +321,11 @@ export default function Scanner() {
             });
 
             const timeString = scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            Alert.alert(isAuto ? '✅ Auto-Reminder' : '✅ Reminder Set', `Scheduled for ${timeString}`);
+            const toneLabel = tone.name;
+            Alert.alert(
+                isAuto ? '✅ Auto-Reminder' : '✅ Reminder Set',
+                `Scheduled for ${timeString}\nAlarm: ${toneLabel}`
+            );
         } catch (err) {
             if (!isAuto) Alert.alert('Error', 'Could not set reminder.');
         }
@@ -661,7 +718,7 @@ export default function Scanner() {
                     visible={showTimePicker}
                     onClose={() => setShowTimePicker(false)}
                     medicineName={selectedMedForReminder?.medicineName}
-                    onConfirm={(h, m) => selectedMedForReminder && scheduleReminder(selectedMedForReminder.medicineName, h, m)}
+                    onConfirm={(h, m, tone) => selectedMedForReminder && scheduleReminder(selectedMedForReminder.medicineName, h, m, false, tone)}
                 />
             </View>
         );
@@ -863,7 +920,7 @@ const styles = StyleSheet.create({
     primaryBtnRow: {
         flex: 1,
         flexDirection: 'row',
-        backgroundColor: '#000',
+        backgroundColor: '#0369A1',
         paddingVertical: 14,
         borderRadius: 14,
         alignItems: 'center',
@@ -881,9 +938,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         marginTop: 12,
-        marginBottom: 20
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#BAE6FD'
     },
-    secondaryBtnText: { color: '#007AFF', fontSize: 16, fontWeight: '600' },
+    secondaryBtnText: { color: '#0369A1', fontSize: 16, fontWeight: '600' },
 
     // Misc
     topOverlay: { position: 'absolute', top: 0, left: 0, right: 0, padding: 20 },
@@ -892,51 +951,51 @@ const styles = StyleSheet.create({
     loadingText: { color: '#FFF', marginTop: 12, fontSize: 16, fontWeight: '600' },
     errorTitle: { fontSize: 22, fontWeight: '700', color: '#1C1C1E', textAlign: 'center', marginBottom: 8 },
     errorDesc: { fontSize: 16, color: '#3A3A3C', textAlign: 'center', marginBottom: 24, lineHeight: 22 },
-    primaryBtn: { backgroundColor: '#007AFF', paddingVertical: 16, borderRadius: 16, alignItems: 'center', width: '100%' },
+    primaryBtn: { backgroundColor: '#0369A1', paddingVertical: 16, borderRadius: 16, alignItems: 'center', width: '100%' },
     bottomActions: { position: 'absolute', bottom: 50, left: 0, right: 0, alignItems: 'center', gap: 12 },
-    largeFab: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#007AFF', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#007AFF', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 } },
+    largeFab: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#0369A1', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#0369A1', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 } },
     instructionText: { color: '#FFF', fontSize: 16, fontWeight: '500', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 },
 
     // Recent Modal
     modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-    bottomSheet: { backgroundColor: '#F2F2F7', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%', paddingBottom: 30 },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E5EA', backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-    sheetTitle: { fontSize: 20, fontWeight: '700' },
+    bottomSheet: { backgroundColor: '#F1F5F9', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%', paddingBottom: 30 },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#CBD5E1', backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    sheetTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
     closeIconBtn: { padding: 4 },
     recentList: { padding: 16 },
-    recentItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 12, borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
-    recentThumb: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#F2F2F7', marginRight: 12 },
+    recentItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 12, borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, borderWidth: 1, borderColor: '#E2E8F0' },
+    recentThumb: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#F1F5F9', marginRight: 12 },
     recentInfo: { flex: 1 },
-    recentName: { fontSize: 16, fontWeight: '600', color: '#000', marginBottom: 4 },
-    recentTime: { fontSize: 13, color: '#8E8E93' },
+    recentName: { fontSize: 16, fontWeight: '600', color: '#0F172A', marginBottom: 4 },
+    recentTime: { fontSize: 13, color: '#64748B' },
     emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', opacity: 0.6 },
-    emptyText: { marginTop: 12, fontSize: 16, color: '#8E8E93' },
+    emptyText: { marginTop: 12, fontSize: 16, color: '#64748B' },
 
     // Perm Screen
     permContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    permTitle: { fontSize: 20, fontWeight: '700', marginTop: 20, marginBottom: 8 },
-    permDesc: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 24 },
-    permBtn: { backgroundColor: '#000', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
+    permTitle: { fontSize: 20, fontWeight: '700', marginTop: 20, marginBottom: 8, color: '#0F172A' },
+    permDesc: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 24 },
+    permBtn: { backgroundColor: '#0369A1', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
     permBtnText: { color: '#FFF', fontWeight: '600' },
 
     // Picker
     pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
     pickerCard: { backgroundColor: '#FFF', width: '85%', borderRadius: 24, padding: 24, alignItems: 'center' },
-    pickerHeader: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
-    pickerSubHeader: { fontSize: 14, color: '#666', marginBottom: 24 },
+    pickerHeader: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+    pickerSubHeader: { fontSize: 14, color: '#64748B', marginBottom: 24 },
     timeSelectRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 32 },
     timeCol: { alignItems: 'center' },
-    timeDigit: { fontSize: 36, fontWeight: '300', marginVertical: 8, minWidth: 50, textAlign: 'center' },
-    timeSeparator: { fontSize: 36, fontWeight: '300', marginHorizontal: 8, paddingBottom: 8 },
+    timeDigit: { fontSize: 36, fontWeight: '300', marginVertical: 8, minWidth: 50, textAlign: 'center', color: '#0F172A' },
+    timeSeparator: { fontSize: 36, fontWeight: '300', marginHorizontal: 8, paddingBottom: 8, color: '#0F172A' },
     amPmCol: { marginLeft: 16, gap: 8 },
-    amPmBox: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F2F2F7' },
-    amPmSelected: { backgroundColor: '#000' },
-    amPmLabel: { fontSize: 14, fontWeight: '600', color: '#8E8E93' },
+    amPmBox: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F1F5F9' },
+    amPmSelected: { backgroundColor: '#0369A1' },
+    amPmLabel: { fontSize: 14, fontWeight: '600', color: '#64748B' },
     amPmLabelSelected: { color: '#FFF' },
     pickerBtnRow: { flexDirection: 'row', gap: 12, width: '100%' },
-    pickerBtnCancel: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F2F2F7', alignItems: 'center' },
-    pickerBtnConfirm: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#000', alignItems: 'center' },
-    pickerBtnTextCancel: { fontSize: 16, fontWeight: '600', color: '#000' },
+    pickerBtnCancel: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
+    pickerBtnConfirm: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#0369A1', alignItems: 'center' },
+    pickerBtnTextCancel: { fontSize: 16, fontWeight: '600', color: '#0F172A' },
     pickerBtnTextConfirm: { fontSize: 16, fontWeight: '600', color: '#FFF' },
 
     // Food Warnings
@@ -1170,6 +1229,37 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#065F46',
         fontWeight: '600',
+    },
+    // Alarm Tone Selector
+    toneLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#64748B',
+        letterSpacing: 1.2,
+        marginBottom: 12,
+        marginTop: 8,
+    },
+    toneGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+    },
+    toneItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+        gap: 6,
+    },
+    toneName: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
     },
 });
 

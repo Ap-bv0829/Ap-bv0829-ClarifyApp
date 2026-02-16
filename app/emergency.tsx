@@ -266,7 +266,7 @@ export default function Emergency() {
         // 2. Prepare SMS (Fire and forget, don't await result)
         if (contacts.length > 0 && isSmsAvailable) {
             const phoneNumbers = contacts.map(c => c.phone);
-            const message = `🆘 EMERGENCY: I need help! This is an automated alert from my ClarifyApp. Please call me or 911.${locationLink}`;
+            const message = `🆘 EMERGENCY: I need help! This is an automated alert from my MediMate app. Please call me or 911.${locationLink}`;
 
             try {
                 const SMS = require('expo-sms');
@@ -317,7 +317,7 @@ export default function Emergency() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#dc2626" />
+            <StatusBar barStyle="light-content" backgroundColor="#0369A1" />
 
             {/* SOS Countdown Overlay */}
             {sosCountdown !== null && (
@@ -468,7 +468,7 @@ export default function Emergency() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#dc2626' },
+    container: { flex: 1, backgroundColor: '#0369A1' },
     header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 10 },
     backButton: { flexDirection: 'row', alignItems: 'center', marginRight: 16 },
     backText: { color: '#FFF', fontSize: 16, fontWeight: '600', marginLeft: 4 },
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     cardTitle: { fontSize: 18, fontWeight: '800', color: '#1F2937' },
-    editBtn: { color: '#dc2626', fontWeight: '700', fontSize: 14 },
+    editBtn: { color: '#0369A1', fontWeight: '700', fontSize: 14 },
     medicalForm: { gap: 12 },
     medInput: { backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', fontSize: 16 },
     medicalDisplay: { gap: 12 },

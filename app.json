@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "ClarifyApp",
-    "slug": "ClarifyApp",
+    "name": "MediMate",
+    "slug": "MediMate",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "clarifyapp",
+    "scheme": "medimate",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSSpeechRecognitionUsageDescription": "Allow ClarifyApp to use speech recognition to understand what you say.",
-        "NSMicrophoneUsageDescription": "Allow ClarifyApp to use the microphone to hear you."
+        "NSSpeechRecognitionUsageDescription": "Allow MediMate to use speech recognition to understand what you say.",
+        "NSMicrophoneUsageDescription": "Allow MediMate to use the microphone to hear you."
       }
     },
     "android": {
@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.ClarifyApp",
+      "package": "com.anonymous.MediMate",
       "permissions": [
         "NOTIFICATIONS",
         "SCHEDULE_EXACT_ALARM",
@@ -43,7 +43,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow ClarifyApp to use your location to share it in emergencies."
+          "locationAlwaysAndWhenInUsePermission": "Allow MediMate to use your location to share it in emergencies."
         }
       ],
       [
@@ -61,8 +61,8 @@
       [
         "@jamsch/expo-speech-recognition",
         {
-          "microphonePermission": "Allow ClarifyApp to use the microphone to hear you.",
-          "speechRecognitionPermission": "Allow ClarifyApp to use speech recognition to understand what you say."
+          "microphonePermission": "Allow MediMate to use the microphone to hear you.",
+          "speechRecognitionPermission": "Allow MediMate to use speech recognition to understand what you say."
         }
       ]
     ],

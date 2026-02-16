@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MedicineAnalysis } from './gemini';
 
-const MEDICATION_STORAGE_KEY = '@clarify_medications';
+const MEDICATION_STORAGE_KEY = '@medimate_medications';
 
 export interface MedicationRecord {
     id: string;

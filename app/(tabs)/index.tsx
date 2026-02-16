@@ -14,16 +14,16 @@ export default function App() {
       gradient: ['#4facfe', '#00f2fe'] as const,
     },
     {
+      title: 'My Medications',
+      subtitle: 'View schedule & manage meds',
+      route: '/medications' as const,
+      gradient: ['#a855f7', '#c084fc'] as const,
+    },
+    {
       title: 'Emergency SOS',
       subtitle: 'Quick call for help',
       route: '/emergency' as const,
       gradient: ['#dc2626', '#f87171'] as const,
-    },
-    {
-      title: 'Remember People',
-      subtitle: 'Voice notes for faces & names',
-      route: '/memories' as const,
-      gradient: ['#10b981', '#34d399'] as const,
     },
   ];
 

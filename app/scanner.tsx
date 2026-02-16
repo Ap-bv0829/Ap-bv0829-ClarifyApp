@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { analyzeInteractions, analyzeMedicineImage, InteractionReport, MedicineAnalysis } from '../services/gemini';
+import { saveMedication } from '../services/medicationStorage';
 import { getRecentScans, SavedScan, saveScan } from '../services/storage';
 
 // Configure notification handler
@@ -284,6 +285,15 @@ export default function Scanner() {
             const analysis = await analyzeMedicineImage(photo);
             setResults(analysis);
             await saveScan(analysis, photo);
+
+            // 1.5. Save to Medication Storage (for My Medications screen)
+            for (const medicine of analysis) {
+                try {
+                    await saveMedication(photo, medicine);
+                } catch (err) {
+                    console.error('Error saving to medication storage:', err);
+                }
+            }
 
             // 2. Interaction Check (if > 1 med)
             if (analysis.length > 1) {

@@ -1,3 +1,4 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as FileSystem from 'expo-file-system/legacy';
 
 // ========== FRAUD DETECTION UTILITIES ==========

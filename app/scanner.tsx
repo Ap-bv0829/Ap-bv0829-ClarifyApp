@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
+import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, FlatList, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { analyzeInteractions, analyzeMedicineImage, InteractionReport, MedicineAnalysis } from '../services/gemini';
@@ -136,8 +137,22 @@ const CustomTimePicker = ({ visible, onClose, onConfirm, medicineName }: CustomT
         const tone = ALARM_TONES.find(t => t.id === toneId);
         if (!tone || toneId === 'silent') return;
 
-        // Vibrate with the tone's pattern as preview
+        // Vibrate with the tone's pattern
         Vibration.vibrate(tone.pattern);
+
+        // Speak the tone name as audio preview
+        Speech.stop();
+        const messages: Record<string, string> = {
+            gentle: 'Gentle reminder tone',
+            standard: 'Standard alarm tone',
+            urgent: 'Urgent! Urgent! Alarm!',
+            alarm: 'ALARM! ALARM! Take your medicine now!',
+        };
+        Speech.speak(messages[toneId] || tone.name, {
+            rate: toneId === 'urgent' ? 1.3 : toneId === 'alarm' ? 1.5 : 1.0,
+            pitch: toneId === 'alarm' ? 1.3 : 1.0,
+            volume: toneId === 'gentle' ? 0.5 : 1.0,
+        });
     };
 
     const handleConfirm = () => {
@@ -149,61 +164,107 @@ const CustomTimePicker = ({ visible, onClose, onConfirm, medicineName }: CustomT
     };
 
     return (
-        <Modal transparent visible={visible} animationType="fade">
+        <Modal transparent visible={visible} animationType="slide">
             <View style={styles.pickerOverlay}>
                 <View style={styles.pickerCard}>
-                    <Text style={styles.pickerHeader}>Set Reminder</Text>
-                    {medicineName && <Text style={styles.pickerSubHeader}>for {medicineName}</Text>}
-
-                    <View style={styles.timeSelectRow}>
-                        {/* Hour */}
-                        <View style={styles.timeCol}>
-                            <TouchableOpacity onPress={() => setHour(h => h === 12 ? 1 : h + 1)}><Ionicons name="chevron-up" size={24} color="#0369A1" /></TouchableOpacity>
-                            <Text style={styles.timeDigit}>{hour.toString().padStart(2, '0')}</Text>
-                            <TouchableOpacity onPress={() => setHour(h => h === 1 ? 12 : h - 1)}><Ionicons name="chevron-down" size={24} color="#0369A1" /></TouchableOpacity>
-                        </View>
-                        <Text style={styles.timeSeparator}>:</Text>
-                        {/* Minute */}
-                        <View style={styles.timeCol}>
-                            <TouchableOpacity onPress={() => setMinute(m => m >= 55 ? 0 : m + 5)}><Ionicons name="chevron-up" size={24} color="#0369A1" /></TouchableOpacity>
-                            <Text style={styles.timeDigit}>{minute.toString().padStart(2, '0')}</Text>
-                            <TouchableOpacity onPress={() => setMinute(m => m < 5 ? 55 : m - 5)}><Ionicons name="chevron-down" size={24} color="#0369A1" /></TouchableOpacity>
-                        </View>
-                        {/* AM/PM */}
-                        <View style={styles.amPmCol}>
-                            <TouchableOpacity onPress={() => setIsAm(true)} style={[styles.amPmBox, isAm && styles.amPmSelected]}><Text style={[styles.amPmLabel, isAm && styles.amPmLabelSelected]}>AM</Text></TouchableOpacity>
-                            <TouchableOpacity onPress={() => setIsAm(false)} style={[styles.amPmBox, !isAm && styles.amPmSelected]}><Text style={[styles.amPmLabel, !isAm && styles.amPmLabelSelected]}>PM</Text></TouchableOpacity>
+                    <View style={styles.pickerHeaderContainer}>
+                        <Ionicons name="time" size={28} color="#0369A1" />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.pickerHeader}>Set Medication Reminder</Text>
+                            {medicineName && <Text style={styles.pickerSubHeader}><Ionicons name="medical" size={14} color="#64748B" /> {medicineName}</Text>}
                         </View>
                     </View>
 
-                    {/* Alarm Tone Selector */}
-                    <Text style={styles.toneLabel}>ALARM TONE</Text>
-                    <View style={styles.toneGrid}>
-                        {ALARM_TONES.map(tone => (
-                            <TouchableOpacity
-                                key={tone.id}
-                                style={[
-                                    styles.toneItem,
-                                    selectedTone === tone.id && { borderColor: tone.color, backgroundColor: `${tone.color}15` },
-                                ]}
-                                onPress={() => previewTone(tone.id)}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons
-                                    name={tone.icon as any}
-                                    size={20}
-                                    color={selectedTone === tone.id ? tone.color : '#94A3B8'}
-                                />
-                                <Text style={[
-                                    styles.toneName,
-                                    selectedTone === tone.id && { color: tone.color, fontWeight: '800' },
-                                ]}>{tone.name}</Text>
-                                {selectedTone === tone.id && (
-                                    <Ionicons name="checkmark-circle" size={14} color={tone.color} />
-                                )}
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <ScrollView
+                        style={{ width: '100%' }}
+                        showsVerticalScrollIndicator={false}
+                        bounces={true}
+                    >
+
+                        <View style={styles.timeSelectRow}>
+                            {/* Hour */}
+                            <View style={styles.timeCol}>
+                                <TouchableOpacity style={styles.chevronBtn} onPress={() => setHour(h => h === 12 ? 1 : h + 1)} activeOpacity={0.7}>
+                                    <Ionicons name="chevron-up" size={36} color="#0369A1" />
+                                </TouchableOpacity>
+                                <Text style={styles.timeDigit}>{hour.toString().padStart(2, '0')}</Text>
+                                <TouchableOpacity style={styles.chevronBtn} onPress={() => setHour(h => h === 1 ? 12 : h - 1)} activeOpacity={0.7}>
+                                    <Ionicons name="chevron-down" size={36} color="#0369A1" />
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={styles.timeSeparator}>:</Text>
+                            {/* Minute */}
+                            <View style={styles.timeCol}>
+                                <TouchableOpacity style={styles.chevronBtn} onPress={() => setMinute(m => m >= 55 ? 0 : m + 5)} activeOpacity={0.7}>
+                                    <Ionicons name="chevron-up" size={36} color="#0369A1" />
+                                </TouchableOpacity>
+                                <Text style={styles.timeDigit}>{minute.toString().padStart(2, '0')}</Text>
+                                <TouchableOpacity style={styles.chevronBtn} onPress={() => setMinute(m => m < 5 ? 55 : m - 5)} activeOpacity={0.7}>
+                                    <Ionicons name="chevron-down" size={36} color="#0369A1" />
+                                </TouchableOpacity>
+                            </View>
+                            {/* AM/PM */}
+                            <View style={styles.amPmCol}>
+                                <TouchableOpacity onPress={() => setIsAm(true)} style={[styles.amPmBox, isAm && styles.amPmSelected]} activeOpacity={0.7}>
+                                    <Text style={[styles.amPmLabel, isAm && styles.amPmLabelSelected]}>AM</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setIsAm(false)} style={[styles.amPmBox, !isAm && styles.amPmSelected]} activeOpacity={0.7}>
+                                    <Text style={[styles.amPmLabel, !isAm && styles.amPmLabelSelected]}>PM</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Alarm Tone Selector */}
+                        <View style={styles.toneSectionDivider} />
+                        <Text style={styles.toneLabel}>
+                            <Ionicons name="notifications" size={14} color="#64748B" /> ALARM SOUND
+                        </Text>
+                        <View style={styles.toneList}>
+                            {ALARM_TONES.map(tone => {
+                                const isSelected = selectedTone === tone.id;
+                                const descriptions: Record<string, string> = {
+                                    gentle: 'Soft, calming notification',
+                                    standard: 'Regular reminder sound',
+                                    urgent: 'Attention-grabbing alert',
+                                    alarm: 'Maximum volume alert',
+                                    silent: 'Vibration only, no sound',
+                                };
+                                return (
+                                    <TouchableOpacity
+                                        key={tone.id}
+                                        style={[
+                                            styles.toneItem,
+                                            isSelected && {
+                                                borderColor: tone.color,
+                                                backgroundColor: `${tone.color}15`,
+                                                borderWidth: 2.5,
+                                            },
+                                        ]}
+                                        onPress={() => previewTone(tone.id)}
+                                        activeOpacity={0.6}
+                                    >
+                                        <View style={[styles.toneIconBox, { backgroundColor: `${tone.color}20` }]}>
+                                            <Ionicons
+                                                name={tone.icon as any}
+                                                size={28}
+                                                color={tone.color}
+                                            />
+                                        </View>
+                                        <View style={styles.toneTextCol}>
+                                            <Text style={[
+                                                styles.toneName,
+                                                isSelected && { color: tone.color, fontWeight: '800' },
+                                            ]}>{tone.name}</Text>
+                                            <Text style={styles.toneDesc}>{descriptions[tone.id]}</Text>
+                                        </View>
+                                        {isSelected && (
+                                            <Ionicons name="checkmark-circle" size={24} color={tone.color} />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </ScrollView>
 
                     <View style={styles.pickerBtnRow}>
                         <TouchableOpacity style={styles.pickerBtnCancel} onPress={onClose}><Text style={styles.pickerBtnTextCancel}>Cancel</Text></TouchableOpacity>
@@ -232,19 +293,71 @@ export default function Scanner() {
     const [selectedMedForReminder, setSelectedMedForReminder] = useState<MedicineAnalysis | null>(null);
     const [showRecentModal, setShowRecentModal] = useState(false);
     const [expandedMedIndex, setExpandedMedIndex] = useState<number | null>(0); // Default expand first
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState({ time: '', tone: '', isAuto: false });
 
     const cameraRef = useRef<CameraView>(null);
 
-    // Setup Notification Channel for Android
+    // TTS Handler
+    const handleSpeak = (text: string) => {
+        try {
+            Speech.speak(text, {
+                language: 'en',
+                pitch: 1.0,
+                rate: 0.9,
+            });
+        } catch (e) {
+            console.warn('TTS Error:', e);
+        }
+    };
+
+    // Setup Notification Channel for Android + Notification Listener
     useEffect(() => {
         if (Platform.OS === 'android') {
             Notifications.setNotificationChannelAsync('medicine-reminders', {
                 name: 'Medicine Reminders',
-                importance: Notifications.AndroidImportance.HIGH,
+                importance: Notifications.AndroidImportance.MAX,
                 sound: 'default',
                 vibrationPattern: [0, 250, 250, 250],
+                enableVibrate: true,
+                showBadge: true,
             });
         }
+
+        // Listen for notifications and speak the alarm
+        const subscription = Notifications.addNotificationReceivedListener(notification => {
+            const data = notification.request.content.data;
+            const medicineName = data?.medicine || 'your medicine';
+            const toneId = data?.tone || 'standard';
+            const tone = ALARM_TONES.find(t => t.id === toneId);
+
+            if (toneId !== 'silent') {
+                // Vibrate
+                if (tone) Vibration.vibrate(tone.pattern);
+
+                // Speak the alarm
+                Speech.stop();
+                const urgency = toneId === 'alarm' || toneId === 'urgent';
+                const message = urgency
+                    ? `Attention! It is time to take ${medicineName}. Please take your medicine now!`
+                    : `Medicine reminder. It is time to take ${medicineName}.`;
+
+                Speech.speak(message, {
+                    rate: urgency ? 1.2 : 1.0,
+                    pitch: 1.0,
+                    volume: 1.0,
+                });
+
+                // Repeat for urgent/alarm tones
+                if (urgency) {
+                    setTimeout(() => {
+                        Speech.speak(`Reminder: take ${medicineName} now.`, { rate: 1.1 });
+                    }, 5000);
+                }
+            }
+        });
+
+        return () => subscription.remove();
     }, []);
 
     if (!permission) return <View style={styles.container} />;
@@ -322,10 +435,14 @@ export default function Scanner() {
 
             const timeString = scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const toneLabel = tone.name;
-            Alert.alert(
-                isAuto ? '✅ Auto-Reminder' : '✅ Reminder Set',
-                `Scheduled for ${timeString}\nAlarm: ${toneLabel}`
-            );
+            console.log('Setting success message:', timeString, toneLabel);
+            setSuccessMessage({ time: timeString, tone: toneLabel, isAuto });
+            // Delay to ensure time picker modal closes first
+            setTimeout(() => {
+                console.log('Showing success modal now!');
+                setShowSuccessModal(true);
+                setTimeout(() => setShowSuccessModal(false), 3000);
+            }, 300);
         } catch (err) {
             if (!isAuto) Alert.alert('Error', 'Could not set reminder.');
         }
@@ -395,376 +512,420 @@ export default function Scanner() {
 
     // -- Renders --
 
-    // Mode 1: Review / Results
-    if (photo) {
-        return (
-            <View style={styles.container}>
-                <StatusBar barStyle="light-content" />
-                <Image source={{ uri: photo }} style={styles.fullScreenImage} />
+    // -- Renders --
 
-                {/* Header Actions */}
-                <SafeAreaView style={styles.topOverlay}>
-                    <TouchableOpacity onPress={retakePhoto} style={styles.iconBtn}>
-                        <Ionicons name="close" size={28} color="#FFF" />
-                    </TouchableOpacity>
-                </SafeAreaView>
-
-                {/* Loading State */}
-                {isAnalyzing && (
-                    <View style={styles.darkOverlay}>
-                        <ActivityIndicator size="large" color="#FFF" />
-                        <Text style={styles.loadingText}>Analyzing...</Text>
-                    </View>
-                )}
-
-                {/* Error State */}
-                {error && !isAnalyzing && (
-                    <View style={styles.bottomSheetContainer}>
-                        <View style={styles.bottomSheetContent}>
-                            <View style={styles.dragHandle} />
-                            <Text style={styles.errorTitle}>Identification Failed</Text>
-                            <Text style={styles.errorDesc}>{error}</Text>
-                            <TouchableOpacity style={styles.primaryBtn} onPress={retakePhoto}>
-                                <Text style={styles.primaryBtnText}>Try Again</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-
-                {/* Success Results */}
-                {results.length > 0 && !isAnalyzing && !error && (
-                    <View style={styles.bottomSheetContainer}>
-                        <View style={styles.bottomSheetContent}>
-                            <View style={styles.dragHandle} />
-
-                            <ScrollView style={styles.resultsScroll} showsVerticalScrollIndicator={false}>
-
-                                {/* INTERACTION ALERT BANNER */}
-                                {interactionReport && interactionReport.hasConflict && (
-                                    <View style={[
-                                        styles.alertBanner,
-                                        interactionReport.severity === 'high' ? styles.alertHigh : styles.alertMedium
-                                    ]}>
-                                        <View style={styles.alertHeader}>
-                                            <Ionicons name="warning" size={24} color={interactionReport.severity === 'high' ? '#FFF' : '#854D0E'} />
-                                            <Text style={[
-                                                styles.alertTitle,
-                                                interactionReport.severity === 'high' ? { color: '#FFF' } : { color: '#854D0E' }
-                                            ]}>
-                                                CONFLICT DETECTED
-                                            </Text>
-                                        </View>
-                                        <Text style={[
-                                            styles.alertDesc,
-                                            interactionReport.severity === 'high' ? { color: '#FEF2F2' } : { color: '#A16207' }
-                                        ]}>
-                                            {interactionReport.description}
-                                        </Text>
-                                    </View>
-                                )}
-
-                                {/* MEDICINE LIST */}
-                                {results.map((med, index) => {
-                                    const isExpanded = expandedMedIndex === index;
-                                    const fraud = med.fraudDetection;
-
-                                    // Determine badge color based on risk level
-                                    let badgeColor = '#10B981'; // green for safe
-                                    let badgeText = 'VERIFIED';
-                                    if (fraud) {
-                                        if (fraud.riskLevel === 'high-risk') {
-                                            badgeColor = '#EF4444';
-                                            badgeText = `${fraud.authenticityScore}% HIGH RISK`;
-                                        } else if (fraud.riskLevel === 'suspicious') {
-                                            badgeColor = '#F97316';
-                                            badgeText = `${fraud.authenticityScore}% SUSPICIOUS`;
-                                        } else if (fraud.riskLevel === 'caution') {
-                                            badgeColor = '#EAB308';
-                                            badgeText = `${fraud.authenticityScore}% CAUTION`;
-                                        } else {
-                                            badgeText = `${fraud.authenticityScore}% AUTHENTIC`;
-                                        }
-                                    }
-
-                                    return (
-                                        <View key={index} style={styles.medCard}>
-                                            <TouchableOpacity
-                                                style={styles.medCardHeader}
-                                                onPress={() => setExpandedMedIndex(isExpanded ? null : index)}
-                                            >
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={styles.medCardTitle}>{med.medicineName}</Text>
-                                                    {fraud && (
-                                                        <View style={[styles.fraudBadge, { backgroundColor: badgeColor }]}>
-                                                            <Ionicons name={fraud.riskLevel === 'safe' || fraud.riskLevel === 'caution' ? "shield-checkmark" : "warning"} size={14} color="#FFF" />
-                                                            <Text style={styles.fraudBadgeText}>{badgeText}</Text>
-                                                        </View>
-                                                    )}
-                                                </View>
-                                                <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color="#8E8E93" />
-                                            </TouchableOpacity>
-
-                                            {isExpanded && (
-                                                <View style={styles.medCardBody}>
-                                                    <View style={styles.infoRow}>
-                                                        <View style={styles.infoBlock}>
-                                                            <Text style={styles.infoLabel}>DOSAGE</Text>
-                                                            <Text style={styles.infoVal}>{med.dosage || '--'}</Text>
-                                                        </View>
-                                                        <View style={styles.infoBlock}>
-                                                            <Text style={styles.infoLabel}>TIME</Text>
-                                                            <Text style={styles.infoVal}>{med.recommendedTime || '--'}</Text>
-                                                        </View>
-                                                    </View>
-
-                                                    <Text style={styles.sectionHeader}>PURPOSE</Text>
-                                                    <Text style={styles.bodyText}>{med.commonUses}</Text>
-
-                                                    <Text style={styles.sectionHeader}>INGREDIENTS</Text>
-                                                    <Text style={styles.bodyText}>{med.activeIngredients}</Text>
-
-                                                    {/* PATIENT INFORMATION */}
-                                                    {(med.patientName || med.patientAge || med.patientSex) && (
-                                                        <View style={styles.patientInfo}>
-                                                            <View style={styles.patientInfoHeader}>
-                                                                <Ionicons name="person" size={18} color="#2563EB" />
-                                                                <Text style={styles.patientInfoTitle}>Patient Information</Text>
-                                                            </View>
-                                                            {med.patientName && (
-                                                                <View style={styles.patientInfoRow}>
-                                                                    <Text style={styles.patientInfoLabel}>Name:</Text>
-                                                                    <Text style={styles.patientInfoValue}>{med.patientName}</Text>
-                                                                </View>
-                                                            )}
-                                                            <View style={styles.patientInfoRow}>
-                                                                {med.patientAge && (
-                                                                    <>
-                                                                        <Text style={styles.patientInfoLabel}>Age:</Text>
-                                                                        <Text style={styles.patientInfoValue}>{med.patientAge}</Text>
-                                                                    </>
-                                                                )}
-                                                                {med.patientSex && (
-                                                                    <>
-                                                                        <Text style={[styles.patientInfoLabel, { marginLeft: med.patientAge ? 16 : 0 }]}>Sex:</Text>
-                                                                        <Text style={styles.patientInfoValue}>{med.patientSex}</Text>
-                                                                    </>
-                                                                )}
-                                                            </View>
-                                                        </View>
-                                                    )}
-
-                                                    {/* PRESCRIPTION VERIFICATION */}
-                                                    {(med.prescribedBy || med.hospital || med.signatureVerified) && (
-                                                        <View style={styles.prescriptionVerification}>
-                                                            <View style={styles.verificationHeader}>
-                                                                <Ionicons name="shield-checkmark" size={18} color="#059669" />
-                                                                <Text style={styles.verificationTitle}>Prescription Details</Text>
-                                                                {med.signatureVerified && (
-                                                                    <View style={styles.signatureBadge}>
-                                                                        <Ionicons name="create" size={12} color="#FFF" />
-                                                                        <Text style={styles.signatureBadgeText}>Signed</Text>
-                                                                    </View>
-                                                                )}
-                                                            </View>
-                                                            {med.prescribedBy && (
-                                                                <View style={styles.verificationRow}>
-                                                                    <Ionicons name="medkit" size={14} color="#047857" />
-                                                                    <Text style={styles.verificationText}>Prescribed by: {med.prescribedBy}</Text>
-                                                                </View>
-                                                            )}
-                                                            {med.hospital && (
-                                                                <View style={styles.verificationRow}>
-                                                                    <Ionicons name="business" size={14} color="#047857" />
-                                                                    <Text style={styles.verificationText}>From: {med.hospital}</Text>
-                                                                </View>
-                                                            )}
-                                                            {med.licenseNumber && (
-                                                                <View style={styles.verificationRow}>
-                                                                    <Ionicons name="card-outline" size={14} color="#047857" />
-                                                                    <Text style={styles.verificationText}>License: {med.licenseNumber}</Text>
-                                                                </View>
-                                                            )}
-                                                            {med.signatureVerified && (
-                                                                <View style={styles.verificationRow}>
-                                                                    <Ionicons name="checkmark-circle" size={14} color="#047857" />
-                                                                    <Text style={styles.verificationText}>Doctor's signature verified on prescription</Text>
-                                                                </View>
-                                                            )}
-                                                        </View>
-                                                    )}
-
-                                                    {med.warnings ? (
-                                                        <View style={styles.warningCard}>
-                                                            <Ionicons name="warning" size={20} color="#EF4444" />
-                                                            <Text style={styles.warningText}>{med.warnings}</Text>
-                                                        </View>
-                                                    ) : null}
-
-                                                    {/* FOOD WARNINGS */}
-                                                    {med.foodWarnings && med.foodWarnings.length > 0 && (
-                                                        <View style={styles.foodWarningSection}>
-                                                            <View style={styles.foodWarningHeader}>
-                                                                <Ionicons name="fast-food" size={18} color="#D97706" />
-                                                                <Text style={styles.foodWarningTitle}>⚠️ Avoid These Foods</Text>
-                                                            </View>
-                                                            <View style={styles.foodChipsContainer}>
-                                                                {med.foodWarnings.map((food, idx) => (
-                                                                    <View key={idx} style={styles.foodChip}>
-                                                                        <Text style={styles.foodChipText}>{food}</Text>
-                                                                    </View>
-                                                                ))}
-                                                            </View>
-                                                        </View>
-                                                    )}
-
-                                                    {/* AFFORDABILITY (Philippines) */}
-                                                    {med.affordability && (
-                                                        <View style={styles.affordabilitySection}>
-                                                            {/* Generic Alternative */}
-                                                            {med.affordability.genericAlternative && (
-                                                                <View style={styles.savingsCard}>
-                                                                    <View style={styles.savingsHeader}>
-                                                                        <Ionicons name="pricetag" size={20} color="#10B981" />
-                                                                        <Text style={styles.savingsTitle}>SAVE MONEY</Text>
-                                                                    </View>
-                                                                    <Text style={styles.genericName}>{med.affordability.genericAlternative}</Text>
-                                                                    {med.affordability.estimatedSavings && (
-                                                                        <Text style={styles.savingsAmount}>Save {med.affordability.estimatedSavings}</Text>
-                                                                    )}
-                                                                    <Text style={styles.pharmacyHint}>Available at Generika, TGP, Mercury Drug</Text>
-                                                                </View>
-                                                            )}
-
-                                                            {/* Senior Discount */}
-                                                            {med.affordability.seniorDiscountEligible && (
-                                                                <View style={styles.seniorDiscountCard}>
-                                                                    <View style={styles.seniorDiscountHeader}>
-                                                                        <Ionicons name="card" size={18} color="#7C3AED" />
-                                                                        <Text style={styles.seniorDiscountTitle}>Senior Citizen Discount</Text>
-                                                                    </View>
-                                                                    <Text style={styles.seniorDiscountText}>Show your Senior ID for 20% OFF at any pharmacy!</Text>
-                                                                </View>
-                                                            )}
-
-                                                            {/* Government Assistance */}
-                                                            {med.affordability.governmentPrograms && med.affordability.governmentPrograms.length > 0 && (
-                                                                <View style={styles.govAssistCard}>
-                                                                    <TouchableOpacity
-                                                                        style={styles.govAssistHeader}
-                                                                        onPress={() => {
-                                                                            // Toggle collapsed state (you can add state for this)
-                                                                        }}
-                                                                    >
-                                                                        <Ionicons name="help-circle" size={18} color="#3B82F6" />
-                                                                        <Text style={styles.govAssistTitle}>Financial Assistance</Text>
-                                                                        <Ionicons name="chevron-down" size={16} color="#3B82F6" />
-                                                                    </TouchableOpacity>
-                                                                    <View style={styles.govAssistBody}>
-                                                                        {med.affordability.governmentPrograms.map((program, idx) => (
-                                                                            <Text key={idx} style={styles.govAssistItem}>• {program}</Text>
-                                                                        ))}
-                                                                        <Text style={styles.govAssistContact}>PCSO Hotline: 1-800-10-2476</Text>
-                                                                    </View>
-                                                                </View>
-                                                            )}
-
-                                                            {/* PhilHealth Coverage */}
-                                                            {med.affordability.philHealthCoverage && (
-                                                                <View style={styles.philhealthCard}>
-                                                                    <Ionicons name="shield-checkmark" size={16} color="#059669" />
-                                                                    <Text style={styles.philhealthText}>PhilHealth: {med.affordability.philHealthCoverage}</Text>
-                                                                </View>
-                                                            )}
-                                                        </View>
-                                                    )}
-
-                                                    <View style={styles.actionRow}>
-                                                        <TouchableOpacity
-                                                            style={styles.primaryBtnRow}
-                                                            onPress={() => handleReminderPress(med)}
-                                                        >
-                                                            <Ionicons name="alarm-outline" size={20} color="#FFF" />
-                                                            <Text style={styles.primaryBtnText}>Set Reminder</Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                </View>
-                                            )}
-                                        </View>
-                                    );
-                                })}
-
-                                <TouchableOpacity style={styles.secondaryBtnFull} onPress={retakePhoto}>
-                                    <Ionicons name="camera-outline" size={20} color="#007AFF" />
-                                    <Text style={styles.secondaryBtnText}>Scan New Items</Text>
-                                </TouchableOpacity>
-
-                                <View style={{ height: 40 }} />
-                            </ScrollView>
-                        </View>
-                    </View>
-                )}
-
-                {/* Pre-Analysis Actions */}
-                {results.length === 0 && !error && !isAnalyzing && (
-                    <View style={styles.bottomActions}>
-                        <TouchableOpacity style={styles.largeFab} onPress={identifyMedicine}>
-                            <Ionicons name="scan" size={32} color="#FFF" />
-                        </TouchableOpacity>
-                        <Text style={styles.instructionText}>Tap to identify</Text>
-                    </View>
-                )}
-
-                <CustomTimePicker
-                    visible={showTimePicker}
-                    onClose={() => setShowTimePicker(false)}
-                    medicineName={selectedMedForReminder?.medicineName}
-                    onConfirm={(h, m, tone) => selectedMedForReminder && scheduleReminder(selectedMedForReminder.medicineName, h, m, false, tone)}
-                />
-            </View>
-        );
-    }
-
-    // Mode 2: Camera Viewfinder
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <CameraView ref={cameraRef} style={styles.camera} facing="back">
-                {/* Controls Overlay */}
-                <SafeAreaView style={styles.overlayContainer}>
-                    {/* Top Bar - No Back Arrow as requested, just empty or flash controls if we added them */}
-                    <View style={styles.headerBar} />
 
-                    {/* Bottom Controls */}
-                    <View style={styles.bottomControls}>
-                        {/* Recent Button (Left) */}
-                        <TouchableOpacity style={styles.controlBtn} onPress={() => setShowRecentModal(true)}>
-                            <View style={styles.blurCircle}>
-                                <Ionicons name="time" size={24} color="#FFF" />
-                            </View>
-                            <Text style={styles.controlLabel}>Recent</Text>
+            {photo ? (
+                // Mode 1: Review / Results
+                <View style={styles.container}>
+                    <Image source={{ uri: photo }} style={styles.fullScreenImage} />
+
+                    {/* Header Actions */}
+                    <SafeAreaView style={styles.topOverlay}>
+                        <TouchableOpacity onPress={retakePhoto} style={styles.iconBtn}>
+                            <Ionicons name="close" size={28} color="#FFF" />
                         </TouchableOpacity>
+                    </SafeAreaView>
 
-                        {/* Shutter Button (Center) */}
-                        <TouchableOpacity onPress={takePhoto} style={styles.shutterOuter}>
-                            <View style={styles.shutterInner} />
-                        </TouchableOpacity>
-
-                        {/* Placeholder (Right) for symmetry */}
-                        <View style={styles.controlBtn}>
-                            {/* Future: Flash/Gallery upload */}
-                            <View style={[styles.blurCircle, { opacity: 0 }]} />
-                            <Text style={[styles.controlLabel, { opacity: 0 }]}>Flash</Text>
+                    {/* Loading State */}
+                    {isAnalyzing && (
+                        <View style={styles.darkOverlay}>
+                            <ActivityIndicator size="large" color="#FFF" />
+                            <Text style={styles.loadingText}>Analyzing...</Text>
                         </View>
-                    </View>
-                </SafeAreaView>
-            </CameraView>
+                    )}
+
+                    {/* Error State */}
+                    {error && !isAnalyzing && (
+                        <View style={styles.bottomSheetContainer}>
+                            <View style={styles.bottomSheetContent}>
+                                <View style={styles.dragHandle} />
+                                <Text style={styles.errorTitle}>Identification Failed</Text>
+                                <Text style={styles.errorDesc}>{error}</Text>
+                                <TouchableOpacity style={styles.primaryBtn} onPress={retakePhoto}>
+                                    <Text style={styles.primaryBtnText}>Try Again</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Success Results */}
+                    {results.length > 0 && !isAnalyzing && !error && (
+                        <View style={styles.bottomSheetContainer}>
+                            <View style={styles.bottomSheetContent}>
+                                <View style={styles.dragHandle} />
+
+                                <ScrollView style={styles.resultsScroll} showsVerticalScrollIndicator={false}>
+
+                                    {/* INTERACTION ALERT BANNER */}
+                                    {interactionReport && interactionReport.hasConflict && (
+                                        <View style={[
+                                            styles.alertBanner,
+                                            interactionReport.severity === 'high' ? styles.alertHigh : styles.alertMedium
+                                        ]}>
+                                            <View style={styles.alertHeader}>
+                                                <Ionicons name="warning" size={24} color={interactionReport.severity === 'high' ? '#FFF' : '#854D0E'} />
+                                                <Text style={[
+                                                    styles.alertTitle,
+                                                    interactionReport.severity === 'high' ? { color: '#FFF' } : { color: '#854D0E' }
+                                                ]}>
+                                                    CONFLICT DETECTED
+                                                </Text>
+                                            </View>
+                                            <Text style={[
+                                                styles.alertDesc,
+                                                interactionReport.severity === 'high' ? { color: '#FEF2F2' } : { color: '#A16207' }
+                                            ]}>
+                                                {interactionReport.description}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {/* MEDICINE LIST */}
+                                    {results.map((med, index) => {
+                                        const isExpanded = expandedMedIndex === index;
+                                        const fraud = med.fraudDetection;
+
+                                        // Determine badge color based on risk level
+                                        let badgeColor = '#10B981'; // green for safe
+                                        let badgeText = 'VERIFIED';
+                                        if (fraud) {
+                                            if (fraud.riskLevel === 'high-risk') {
+                                                badgeColor = '#EF4444';
+                                                badgeText = `${fraud.authenticityScore}% HIGH RISK`;
+                                            } else if (fraud.riskLevel === 'suspicious') {
+                                                badgeColor = '#F97316';
+                                                badgeText = `${fraud.authenticityScore}% SUSPICIOUS`;
+                                            } else if (fraud.riskLevel === 'caution') {
+                                                badgeColor = '#EAB308';
+                                                badgeText = `${fraud.authenticityScore}% CAUTION`;
+                                            } else {
+                                                badgeText = `${fraud.authenticityScore}% AUTHENTIC`;
+                                            }
+                                        }
+
+                                        return (
+                                            <View key={index} style={styles.medCard}>
+                                                <TouchableOpacity
+                                                    style={styles.medCardHeader}
+                                                    onPress={() => setExpandedMedIndex(isExpanded ? null : index)}
+                                                >
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.medCardTitle}>{med.medicineName}</Text>
+                                                        {fraud && (
+                                                            <View style={[styles.fraudBadge, { backgroundColor: badgeColor }]}>
+                                                                <Ionicons name={fraud.riskLevel === 'safe' || fraud.riskLevel === 'caution' ? "shield-checkmark" : "warning"} size={14} color="#FFF" />
+                                                                <Text style={styles.fraudBadgeText}>{badgeText}</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color="#8E8E93" />
+                                                </TouchableOpacity>
+
+                                                {/* TTS Button (Header) */}
+                                                <TouchableOpacity
+                                                    style={{ position: 'absolute', right: 50, top: 16 }}
+                                                    onPress={() => handleSpeak(`${med.medicineName}. ${med.commonUses}`)}
+                                                >
+                                                    <Ionicons name="volume-medium" size={24} color="#4F46E5" />
+                                                </TouchableOpacity>
+
+                                                {isExpanded && (
+                                                    <View style={styles.medCardBody}>
+                                                        <View style={styles.infoRow}>
+                                                            <View style={styles.infoBlock}>
+                                                                <Text style={styles.infoLabel}>DOSAGE</Text>
+                                                                <Text style={styles.infoVal}>{med.dosage || '--'}</Text>
+                                                            </View>
+                                                            <View style={styles.infoBlock}>
+                                                                <Text style={styles.infoLabel}>TIME</Text>
+                                                                <Text style={styles.infoVal}>{med.recommendedTime || '--'}</Text>
+                                                            </View>
+                                                        </View>
+
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <Text style={styles.sectionHeader}>PURPOSE</Text>
+                                                            <TouchableOpacity onPress={() => handleSpeak(med.commonUses)}>
+                                                                <Ionicons name="volume-high" size={16} color="#4F46E5" />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                        <Text style={styles.bodyText}>{med.commonUses}</Text>
+
+                                                        <Text style={styles.sectionHeader}>INGREDIENTS</Text>
+                                                        <Text style={styles.bodyText}>{med.activeIngredients}</Text>
+
+                                                        {/* CLEAN PATIENT ID CARD */}
+                                                        {(med.patientName || med.patientAge || med.patientSex) && (
+                                                            <View style={styles.patientIdCard}>
+                                                                <View style={styles.patientAvatarContainer}>
+                                                                    <Ionicons name="person" size={24} color="#FFF" />
+                                                                </View>
+                                                                <View style={styles.patientDetails}>
+                                                                    <Text style={styles.patientNameLarge}>{med.patientName || 'Unknown Patient'}</Text>
+                                                                    <View style={styles.patientSubDetails}>
+                                                                        <Text style={styles.patientMeta}>{med.patientAge ? `${med.patientAge} yrs` : '--'}</Text>
+                                                                        <View style={styles.metaDivider} />
+                                                                        <Text style={styles.patientMeta}>{med.patientSex || '--'}</Text>
+                                                                    </View>
+                                                                </View>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                )}
+
+                                                {/* PRESCRIPTION VERIFICATION */}
+                                                {(med.prescribedBy || med.hospital || med.signatureVerified) && (
+                                                    <View style={styles.prescriptionVerification}>
+                                                        <View style={styles.verificationHeader}>
+                                                            <Ionicons name="shield-checkmark" size={18} color="#059669" />
+                                                            <Text style={styles.verificationTitle}>Prescription Details</Text>
+                                                            {med.signatureVerified && (
+                                                                <View style={styles.signatureBadge}>
+                                                                    <Ionicons name="create" size={12} color="#FFF" />
+                                                                    <Text style={styles.signatureBadgeText}>Signed</Text>
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                        {med.prescribedBy && (
+                                                            <View style={styles.verificationRow}>
+                                                                <Ionicons name="medkit" size={14} color="#047857" />
+                                                                <Text style={styles.verificationText}>Prescribed by: {med.prescribedBy}</Text>
+                                                            </View>
+                                                        )}
+                                                        {med.hospital && (
+                                                            <View style={styles.verificationRow}>
+                                                                <Ionicons name="business" size={14} color="#047857" />
+                                                                <Text style={styles.verificationText}>From: {med.hospital}</Text>
+                                                            </View>
+                                                        )}
+                                                        {med.licenseNumber && (
+                                                            <View style={styles.verificationRow}>
+                                                                <Ionicons name="card-outline" size={14} color="#047857" />
+                                                                <Text style={styles.verificationText}>License: {med.licenseNumber}</Text>
+                                                            </View>
+                                                        )}
+                                                        {med.signatureVerified && (
+                                                            <View style={styles.verificationRow}>
+                                                                <Ionicons name="checkmark-circle" size={14} color="#047857" />
+                                                                <Text style={styles.verificationText}>Doctor's signature verified on prescription</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                )}
+
+                                                {/* IMPORTANT WARNINGS (Clean Red Accent) */}
+                                                {med.warnings && med.warnings.length > 0 && (
+                                                    <View style={styles.warningCardClean}>
+                                                        <View style={[styles.warningHeaderRow, { justifyContent: 'space-between' }]}>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                                <Ionicons name="warning" size={20} color="#DC2626" />
+                                                                <Text style={styles.warningTitleClean}>Important Safety Warnings</Text>
+                                                            </View>
+                                                            <TouchableOpacity onPress={() => handleSpeak(`Warning. ${Array.isArray(med.warnings) ? med.warnings.join('. ') : med.warnings}`)}>
+                                                                <Ionicons name="volume-high" size={20} color="#DC2626" />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                        {Array.isArray(med.warnings) ? med.warnings.map((w, i) => (
+                                                            <Text key={i} style={styles.warningTextClean}>• {w}</Text>
+                                                        )) : (
+                                                            <Text style={styles.warningTextClean}>{med.warnings}</Text>
+                                                        )}
+                                                    </View>
+                                                )}
+
+                                                {/* FOOD INTERACTIONS (Minimal List) */}
+                                                {med.foodWarnings && med.foodWarnings.length > 0 && (
+                                                    <View style={styles.foodSectionClean}>
+                                                        <Text style={styles.sectionHeaderLabel}>FOOD INTERACTIONS</Text>
+                                                        {med.foodWarnings.map((food, i) => (
+                                                            <View key={i} style={styles.foodItemRow}>
+                                                                <Ionicons name="restaurant" size={16} color="#64748B" />
+                                                                <Text style={styles.foodItemText}>{food}</Text>
+                                                            </View>
+                                                        ))}
+                                                    </View>
+                                                )}
+
+                                                {/* AFFORDABILITY (Philippines) */}
+                                                {med.affordability && (
+                                                    <View style={styles.affordabilitySection}>
+                                                        {/* Generic Alternative */}
+                                                        {med.affordability.genericAlternative && (
+                                                            <View style={styles.savingsCard}>
+                                                                <View style={styles.savingsHeader}>
+                                                                    <Ionicons name="pricetag" size={20} color="#10B981" />
+                                                                    <Text style={styles.savingsTitle}>SAVE MONEY</Text>
+                                                                </View>
+                                                                <Text style={styles.genericName}>{med.affordability.genericAlternative}</Text>
+                                                                {med.affordability.estimatedSavings && (
+                                                                    <Text style={styles.savingsAmount}>Save {med.affordability.estimatedSavings}</Text>
+                                                                )}
+                                                                <Text style={styles.pharmacyHint}>Available at Generika, TGP, Mercury Drug</Text>
+                                                            </View>
+                                                        )}
+
+                                                        {/* Senior / PWD Priority ID (Compact) */}
+                                                        {med.affordability.seniorDiscountEligible && (
+                                                            <View style={styles.seniorDiscountCard}>
+                                                                <View style={styles.seniorDiscountBadge}>
+                                                                    <Ionicons name="accessibility" size={14} color="#FFF" />
+                                                                    <Text style={styles.seniorDiscountBadgeText}>SENIOR / PWD</Text>
+                                                                </View>
+                                                                <Text style={styles.seniorDiscountText} numberOfLines={1}>
+                                                                    20% Off & Priority Lane Access
+                                                                </Text>
+                                                            </View>
+                                                        )}
+
+                                                        {/* Government Assistance */}
+                                                        {med.affordability.governmentPrograms && med.affordability.governmentPrograms.length > 0 && (
+                                                            <View style={styles.govAssistCard}>
+                                                                <TouchableOpacity
+                                                                    style={styles.govAssistHeader}
+                                                                    onPress={() => {
+                                                                        // Toggle collapsed state (you can add state for this)
+                                                                    }}
+                                                                >
+                                                                    <Ionicons name="help-circle" size={18} color="#3B82F6" />
+                                                                    <Text style={styles.govAssistTitle}>Financial Assistance</Text>
+                                                                    <Ionicons name="chevron-down" size={16} color="#3B82F6" />
+                                                                </TouchableOpacity>
+                                                                <View style={styles.govAssistBody}>
+                                                                    {med.affordability.governmentPrograms.map((program, idx) => (
+                                                                        <Text key={idx} style={styles.govAssistItem}>• {program}</Text>
+                                                                    ))}
+                                                                    <Text style={styles.govAssistContact}>PCSO Hotline: 1-800-10-2476</Text>
+                                                                </View>
+                                                            </View>
+                                                        )}
+
+                                                        {/* PhilHealth Coverage */}
+                                                        {med.affordability.philHealthCoverage && (
+                                                            <View style={styles.philhealthCard}>
+                                                                <Ionicons name="shield-checkmark" size={16} color="#059669" />
+                                                                <Text style={styles.philhealthText}>PhilHealth: {med.affordability.philHealthCoverage}</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                )}
+
+                                                <View style={styles.actionRow}>
+                                                    <TouchableOpacity
+                                                        style={styles.primaryBtnRow}
+                                                        onPress={() => handleReminderPress(med)}
+                                                    >
+                                                        <Ionicons name="alarm-outline" size={20} color="#FFF" />
+                                                        <Text style={styles.primaryBtnText}>Set Reminder</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        )
+                                    }
+
+                                    )}
+
+                                    <TouchableOpacity style={styles.secondaryBtnFull} onPress={retakePhoto}>
+                                        <Ionicons name="camera-outline" size={20} color="#007AFF" />
+                                        <Text style={styles.secondaryBtnText}>Scan New Items</Text>
+                                    </TouchableOpacity>
+
+                                    <View style={{ height: 40 }} />
+                                </ScrollView>
+                            </View>
+                        </View>
+                    )
+                    }
+
+                    {/* Pre-Analysis Actions */}
+                    {
+                        results.length === 0 && !error && !isAnalyzing && (
+                            <View style={styles.bottomActions}>
+                                <TouchableOpacity style={styles.largeFab} onPress={identifyMedicine}>
+                                    <Ionicons name="scan" size={32} color="#FFF" />
+                                </TouchableOpacity>
+                                <Text style={styles.instructionText}>Tap to identify</Text>
+                            </View>
+                        )
+                    }
+                </View >
+            ) : (
+                // Mode 2: Camera Viewfinder
+                <CameraView ref={cameraRef} style={styles.camera} facing="back">
+                    {/* Controls Overlay */}
+                    <SafeAreaView style={styles.overlayContainer}>
+                        {/* Top Bar - No Back Arrow as requested, just empty or flash controls if we added them */}
+                        <View style={styles.headerBar} />
+
+                        {/* Bottom Controls */}
+                        <View style={styles.bottomControls}>
+                            {/* Recent Button (Left) */}
+                            <TouchableOpacity style={styles.controlBtn} onPress={() => setShowRecentModal(true)}>
+                                <View style={styles.blurCircle}>
+                                    <Ionicons name="time" size={24} color="#FFF" />
+                                </View>
+                                <Text style={styles.controlLabel}>Recent</Text>
+                            </TouchableOpacity>
+
+                            {/* Shutter Button (Center) */}
+                            <TouchableOpacity onPress={takePhoto} style={styles.shutterOuter}>
+                                <View style={styles.shutterInner} />
+                            </TouchableOpacity>
+
+                            {/* Placeholder (Right) for symmetry */}
+                            <View style={styles.controlBtn}>
+                                {/* Future: Flash/Gallery upload */}
+                                <View style={[styles.blurCircle, { opacity: 0 }]} />
+                                <Text style={[styles.controlLabel, { opacity: 0 }]}>Flash</Text>
+                            </View>
+                        </View>
+                    </SafeAreaView>
+                </CameraView>
+            )}
+
+            {/* --- GLOBAL MODALS (Always at root) --- */}
+
+            <CustomTimePicker
+                visible={showTimePicker}
+                onClose={() => setShowTimePicker(false)}
+                medicineName={selectedMedForReminder?.medicineName}
+                onConfirm={(h, m, tone) => selectedMedForReminder && scheduleReminder(selectedMedForReminder.medicineName, h, m, false, tone)}
+            />
 
             <RecentScansModal
                 visible={showRecentModal}
                 onClose={() => setShowRecentModal(false)}
                 onSelect={handleRecentSelect}
             />
-        </View>
+
+            {/* Success Confirmation Modal */}
+            <Modal transparent visible={showSuccessModal} animationType="fade">
+                <TouchableOpacity
+                    style={styles.successOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowSuccessModal(false)}
+                >
+                    <View style={styles.successCard}>
+                        <View style={styles.successIconCircle}>
+                            <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+                        </View>
+                        <Text style={styles.successTitle}>
+                            {successMessage.isAuto ? 'Auto-Reminder Set!' : 'Reminder Set!'}
+                        </Text>
+                        <View style={styles.successDetailRow}>
+                            <Ionicons name="time-outline" size={20} color="#0369A1" />
+                            <Text style={styles.successTime}>{successMessage.time}</Text>
+                        </View>
+                        <View style={styles.successDetailRow}>
+                            <Ionicons name="notifications-outline" size={20} color="#0369A1" />
+                            <Text style={styles.successAlarm}>Alarm: {successMessage.tone}</Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+        </View >
     );
 }
 
@@ -779,29 +940,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 10
+        paddingTop: 10,
+        zIndex: 10
+    },
+    topOverlay: {
+        position: 'absolute',
+        top: 40,
+        left: 20,
+        zIndex: 10
     },
     bottomControls: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 40,
-        paddingBottom: 50,
+        justifyContent: 'space-around',
+        paddingHorizontal: 30,
+        paddingBottom: 40,
     },
-    controlBtn: { alignItems: 'center', width: 60 },
-    blurCircle: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)'
-    },
-    controlLabel: { color: '#FFF', fontSize: 12, fontWeight: '500' },
-    shutterOuter: {
+
+    // Buttons
+    shutterBtn: {
         width: 80,
         height: 80,
         borderRadius: 40,
@@ -809,6 +966,7 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255,255,255,0.3)',
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)'
     },
     shutterInner: {
         width: 64,
@@ -816,450 +974,500 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         backgroundColor: '#FFF',
     },
-
-    // Results Bottom Sheet
-    bottomSheetContainer: {
-        position: 'absolute',
-        bottom: 0,
-        width: '100%',
-        height: '75%', // Increased height for lists
-        justifyContent: 'flex-end',
+    controlBtn: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 60,
+        height: 60
     },
-    bottomSheetContent: {
-        flex: 1,
-        backgroundColor: '#F2F2F7', // Gray bg for card separation
+    controlLabel: {
+        color: '#FFF',
+        fontSize: 12,
+        marginTop: 4,
+        fontWeight: '600',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2
+    },
+    blurCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 4
+    },
+    iconBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // Loading & Analysis
+    darkOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 20
+    },
+    loadingText: {
+        color: '#FFF',
+        marginTop: 20,
+        fontSize: 18,
+        fontWeight: '600'
+    },
+
+    // Pre-Analysis / Bottom Actions
+    bottomActions: {
+        position: 'absolute',
+        bottom: 50,
+        alignSelf: 'center',
+        alignItems: 'center',
+        gap: 12
+    },
+    largeFab: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: '#0369A1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6
+    },
+    instructionText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '500',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2
+    },
+
+    // Picker Styles (Restored)
+    pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    pickerCard: {
+        backgroundColor: '#FFF',
+        width: '100%',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
-        padding: 20,
-        paddingTop: 12,
+        padding: 28,
+        maxHeight: '90%',
         shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 10,
     },
-    resultsScroll: {
-        flex: 1,
-    },
-    dragHandle: {
-        width: 40,
-        height: 5,
-        backgroundColor: '#C7C7CC',
-        borderRadius: 3,
-        alignSelf: 'center',
-        marginBottom: 20,
-    },
-
-    // Alert Banner
-    alertBanner: { padding: 16, borderRadius: 16, marginBottom: 16, borderLeftWidth: 6 },
-    alertHigh: { backgroundColor: '#EF4444', borderLeftColor: '#7F1D1D' }, // Red
-    alertMedium: { backgroundColor: '#FEF3C7', borderLeftColor: '#D97706' }, // Yellow
-    alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    alertTitle: { fontSize: 18, fontWeight: '800' },
-    alertDesc: { fontSize: 14, fontWeight: '600' },
-
-    // Med Cards
-    medCard: {
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        overflow: 'hidden',
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 2
-    },
-    medCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-    },
-    medCardTitle: { fontSize: 18, fontWeight: '700', color: '#1C1C1E' },
-    medCardBody: {
-        padding: 16,
-        paddingTop: 0,
-        borderTopWidth: 1,
-        borderTopColor: '#F2F2F7'
-    },
-
-    infoRow: { flexDirection: 'row', marginBottom: 20, gap: 12, marginTop: 16 },
-    infoBlock: { flex: 1, backgroundColor: '#F2F2F7', padding: 12, borderRadius: 12 },
-    infoLabel: { fontSize: 11, fontWeight: '700', color: '#8E8E93', marginBottom: 4, letterSpacing: 0.5 },
-    infoVal: { fontSize: 16, fontWeight: '600', color: '#000' },
-    sectionHeader: { fontSize: 13, fontWeight: '700', color: '#8E8E93', marginTop: 12, marginBottom: 6, letterSpacing: 0.5 },
-    bodyText: { fontSize: 15, color: '#3A3A3C', lineHeight: 22 },
-    warningCard: {
+    pickerHeaderContainer: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        backgroundColor: '#FEF2F2',
-        padding: 12,
-        borderRadius: 12,
-        marginTop: 16,
-        gap: 10
+        gap: 12,
+        marginBottom: 24,
     },
-    warningText: { flex: 1, color: '#B91C1C', fontSize: 14, lineHeight: 20 },
+    pickerHeader: { fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+    pickerSubHeader: { fontSize: 14, color: '#64748B', flexDirection: 'row', alignItems: 'center', gap: 4 },
 
-    fraudBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
-        marginTop: 6,
-        gap: 6,
-    },
-    fraudBadgeText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#FFF',
-        letterSpacing: 0.5,
-    },
-
-    actionRow: { flexDirection: 'row', marginTop: 20 },
-
-    primaryBtnRow: {
-        flex: 1,
-        flexDirection: 'row',
-        backgroundColor: '#0369A1',
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8
-    },
-    primaryBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
-
-    secondaryBtnFull: {
-        flexDirection: 'row',
+    timeSelectRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, alignSelf: 'center' },
+    timeCol: { alignItems: 'center', gap: 12 },
+    chevronBtn: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         backgroundColor: '#E0F2FE',
-        paddingVertical: 14,
-        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
-        marginTop: 12,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: '#BAE6FD'
     },
-    secondaryBtnText: { color: '#0369A1', fontSize: 16, fontWeight: '600' },
+    timeDigit: { fontSize: 72, fontWeight: '300', minWidth: 90, textAlign: 'center', color: '#0369A1' },
+    timeSeparator: { fontSize: 72, fontWeight: '200', marginHorizontal: 16, paddingBottom: 10, color: '#94A3B8' },
 
-    // Misc
-    topOverlay: { position: 'absolute', top: 0, left: 0, right: 0, padding: 20 },
-    iconBtn: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', alignSelf: 'flex-start' },
-    darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center' },
-    loadingText: { color: '#FFF', marginTop: 12, fontSize: 16, fontWeight: '600' },
-    errorTitle: { fontSize: 22, fontWeight: '700', color: '#1C1C1E', textAlign: 'center', marginBottom: 8 },
-    errorDesc: { fontSize: 16, color: '#3A3A3C', textAlign: 'center', marginBottom: 24, lineHeight: 22 },
-    primaryBtn: { backgroundColor: '#0369A1', paddingVertical: 16, borderRadius: 16, alignItems: 'center', width: '100%' },
-    bottomActions: { position: 'absolute', bottom: 50, left: 0, right: 0, alignItems: 'center', gap: 12 },
-    largeFab: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#0369A1', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#0369A1', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 } },
-    instructionText: { color: '#FFF', fontSize: 16, fontWeight: '500', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 },
-
-    // Recent Modal
-    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-    bottomSheet: { backgroundColor: '#F1F5F9', borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%', paddingBottom: 30 },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#CBD5E1', backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-    sheetTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-    closeIconBtn: { padding: 4 },
-    recentList: { padding: 16 },
-    recentItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 12, borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, borderWidth: 1, borderColor: '#E2E8F0' },
-    recentThumb: { width: 48, height: 48, borderRadius: 10, backgroundColor: '#F1F5F9', marginRight: 12 },
-    recentInfo: { flex: 1 },
-    recentName: { fontSize: 16, fontWeight: '600', color: '#0F172A', marginBottom: 4 },
-    recentTime: { fontSize: 13, color: '#64748B' },
-    emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', opacity: 0.6 },
-    emptyText: { marginTop: 12, fontSize: 16, color: '#64748B' },
-
-    // Perm Screen
-    permContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-    permTitle: { fontSize: 20, fontWeight: '700', marginTop: 20, marginBottom: 8, color: '#0F172A' },
-    permDesc: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 24 },
-    permBtn: { backgroundColor: '#0369A1', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
-    permBtnText: { color: '#FFF', fontWeight: '600' },
-
-    // Picker
-    pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-    pickerCard: { backgroundColor: '#FFF', width: '85%', borderRadius: 24, padding: 24, alignItems: 'center' },
-    pickerHeader: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
-    pickerSubHeader: { fontSize: 14, color: '#64748B', marginBottom: 24 },
-    timeSelectRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 32 },
-    timeCol: { alignItems: 'center' },
-    timeDigit: { fontSize: 36, fontWeight: '300', marginVertical: 8, minWidth: 50, textAlign: 'center', color: '#0F172A' },
-    timeSeparator: { fontSize: 36, fontWeight: '300', marginHorizontal: 8, paddingBottom: 8, color: '#0F172A' },
-    amPmCol: { marginLeft: 16, gap: 8 },
-    amPmBox: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F1F5F9' },
+    amPmCol: { marginLeft: 20, gap: 12 },
+    amPmBox: {
+        paddingVertical: 12,
+        paddingHorizontal: 18,
+        borderRadius: 16,
+        backgroundColor: '#F1F5F9',
+        minWidth: 60,
+        alignItems: 'center',
+    },
     amPmSelected: { backgroundColor: '#0369A1' },
-    amPmLabel: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+    amPmLabel: { fontSize: 16, fontWeight: '600', color: '#64748B' },
     amPmLabelSelected: { color: '#FFF' },
-    pickerBtnRow: { flexDirection: 'row', gap: 12, width: '100%' },
+
+    pickerBtnRow: { flexDirection: 'row', gap: 12, width: '100%', marginTop: 20 },
     pickerBtnCancel: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
     pickerBtnConfirm: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#0369A1', alignItems: 'center' },
     pickerBtnTextCancel: { fontSize: 16, fontWeight: '600', color: '#0F172A' },
     pickerBtnTextConfirm: { fontSize: 16, fontWeight: '600', color: '#FFF' },
 
-    // Food Warnings
-    foodWarningSection: {
-        backgroundColor: '#FEF3C7',
-        padding: 14,
-        borderRadius: 12,
-        marginTop: 16,
-        borderLeftWidth: 4,
-        borderLeftColor: '#D97706'
+    // Tone Selector
+    toneSectionDivider: {
+        height: 1,
+        backgroundColor: '#E2E8F0',
+        marginVertical: 20,
     },
-    foodWarningHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 10
-    },
-    foodWarningTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#92400E'
-    },
-    foodChipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8
-    },
-    foodChip: {
-        backgroundColor: '#FFF',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#F59E0B'
-    },
-    foodChipText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#B45309'
-    },
-
-    // Patient Information
-    patientInfo: {
-        backgroundColor: '#EFF6FF',
-        padding: 12,
-        borderRadius: 10,
-        marginTop: 16,
-        borderLeftWidth: 3,
-        borderLeftColor: '#2563EB',
-    },
-    patientInfoHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 8,
-    },
-    patientInfoTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#1E40AF',
-    },
-    patientInfoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-        flexWrap: 'wrap',
-    },
-    patientInfoLabel: {
-        fontSize: 13,
-        color: '#1E3A8A',
-        fontWeight: '600',
-        marginRight: 6,
-    },
-    patientInfoValue: {
-        fontSize: 13,
-        color: '#1E40AF',
-    },
-
-    // Prescription Verification
-    prescriptionVerification: {
-        backgroundColor: '#ECFDF5',
-        padding: 12,
-        borderRadius: 10,
-        marginTop: 16,
-        borderLeftWidth: 3,
-        borderLeftColor: '#059669',
-    },
-    verificationHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 8,
-    },
-    verificationTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#047857',
-    },
-    signatureBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#059669',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 12,
-        gap: 4,
-        marginLeft: 'auto',
-    },
-    signatureBadgeText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#FFF',
-    },
-    verificationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 4,
-    },
-    verificationText: {
-        fontSize: 13,
-        color: '#065F46',
-    },
-
-    // Affordability (Philippines)
-    affordabilitySection: {
-        marginTop: 16,
-        gap: 12,
-    },
-    savingsCard: {
-        backgroundColor: '#D1FAE5',
-        padding: 14,
-        borderRadius: 12,
-        borderLeftWidth: 4,
-        borderLeftColor: '#10B981',
-    },
-    savingsHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 8,
-    },
-    savingsTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#065F46',
-    },
-    genericName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#047857',
-        marginBottom: 4,
-    },
-    savingsAmount: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#10B981',
-        marginBottom: 6,
-    },
-    pharmacyHint: {
-        fontSize: 12,
-        color: '#059669',
-        fontStyle: 'italic',
-    },
-    seniorDiscountCard: {
-        backgroundColor: '#EDE9FE',
-        padding: 14,
-        borderRadius: 12,
-        borderLeftWidth: 4,
-        borderLeftColor: '#7C3AED',
-    },
-    seniorDiscountHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 6,
-    },
-    seniorDiscountTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#5B21B6',
-    },
-    seniorDiscountText: {
-        fontSize: 13,
-        color: '#6B21A8',
-        lineHeight: 18,
-    },
-    govAssistCard: {
-        backgroundColor: '#DBEAFE',
-        borderRadius: 12,
-        borderLeftWidth: 4,
-        borderLeftColor: '#3B82F6',
-        overflow: 'hidden',
-    },
-    govAssistHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        padding: 14,
-    },
-    govAssistTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#1E40AF',
-        flex: 1,
-    },
-    govAssistBody: {
-        padding: 14,
-        paddingTop: 0,
-    },
-    govAssistItem: {
-        fontSize: 13,
-        color: '#1E3A8A',
-        marginBottom: 4,
-    },
-    govAssistContact: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#2563EB',
-        marginTop: 8,
-    },
-    philhealthCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        backgroundColor: '#D1FAE5',
-        padding: 10,
-        borderRadius: 8,
-    },
-    philhealthText: {
-        fontSize: 13,
-        color: '#065F46',
-        fontWeight: '600',
-    },
-    // Alarm Tone Selector
     toneLabel: {
         fontSize: 12,
         fontWeight: '800',
         color: '#64748B',
-        letterSpacing: 1.2,
-        marginBottom: 12,
-        marginTop: 8,
-    },
-    toneGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
+        letterSpacing: 1.5,
         marginBottom: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    toneList: {
+        gap: 10,
+        marginBottom: 24,
     },
     toneItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 12,
+        padding: 16,
+        borderRadius: 16,
         borderWidth: 2,
         borderColor: '#E2E8F0',
-        backgroundColor: '#F8FAFC',
-        gap: 6,
+        backgroundColor: '#FAFBFC',
+        gap: 14,
+    },
+    toneIconBox: {
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toneTextCol: {
+        flex: 1,
     },
     toneName: {
-        fontSize: 13,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#0F172A',
+        marginBottom: 2,
+    },
+    toneDesc: {
+        fontSize: 12,
+        color: '#64748B',
+        lineHeight: 16,
+    },
+
+    // Success Modal
+    successOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    successCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: 32,
+        alignItems: 'center',
+        width: '90%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+        elevation: 12,
+    },
+    successIconCircle: {
+        marginBottom: 16,
+    },
+    successTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#0F172A',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    successDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginVertical: 6,
+        backgroundColor: '#F0F9FF',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        width: '100%',
+    },
+    successTime: {
+        fontSize: 18,
         fontWeight: '600',
+        color: '#0369A1',
+    },
+    successAlarm: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#0369A1',
+    },
+
+    // --- Restored Missing Styles ---
+    recentItem: {
+        flexDirection: 'row',
+        padding: 16,
+        backgroundColor: '#FAFBFC',
+        borderRadius: 16,
+        marginBottom: 12,
+        alignItems: 'center',
+        gap: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    recentThumb: {
+        width: 56,
+        height: 56,
+        borderRadius: 12,
+        backgroundColor: '#E2E8F0',
+    },
+    recentInfo: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    recentName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#0F172A',
+        marginBottom: 4,
+    },
+    recentTime: {
+        fontSize: 12,
         color: '#64748B',
     },
+
+    // Empty States & Sheets
+    emptyState: { alignItems: 'center', padding: 40, opacity: 0.6 },
+    emptyText: { marginTop: 16, fontSize: 16, color: '#64748B' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%', paddingBottom: 40 },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+    sheetTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+    closeIconBtn: { padding: 4 },
+    recentList: { padding: 20 },
+
+    // Permissions
+    permContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#000' },
+    permTitle: { fontSize: 20, fontWeight: '700', color: '#FFF', marginBottom: 12 },
+    permDesc: { fontSize: 16, color: '#CBD5E1', textAlign: 'center', marginBottom: 24 },
+    permBtn: { backgroundColor: '#0369A1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+    permBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+
+    // Results / Analysis Styles
+    bottomSheetContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#F8FAFC',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        height: '85%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 20,
+    },
+    bottomSheetContent: { flex: 1 },
+    dragHandle: { width: 40, height: 4, backgroundColor: '#CBD5E1', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
+    resultsScroll: { padding: 20, paddingBottom: 100 },
+
+    // Error State
+    errorTitle: { fontSize: 18, fontWeight: '700', color: '#EF4444', marginBottom: 8 },
+    errorDesc: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 16 },
+    primaryBtn: { backgroundColor: '#0369A1', paddingVertical: 14, borderRadius: 14, alignItems: 'center', width: '100%' },
+    primaryBtnText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
+
+
+
+    // Alerts
+    alertBanner: { padding: 16, borderRadius: 16, marginBottom: 16, gap: 8 },
+    alertHigh: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
+    alertMedium: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A' },
+    alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    alertTitle: { fontSize: 16, fontWeight: '700', color: '#991B1B' },
+    alertDesc: { fontSize: 14, color: '#B91C1C', lineHeight: 20 },
+
+    // Medication Card
+    // Medication Card (Premium)
+    medCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 20,
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: '#F1F5F9'
+    },
+    medCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+    medCardTitle: { fontSize: 24, fontWeight: '800', color: '#1E293B', flex: 1, marginRight: 10, letterSpacing: -0.5 },
+    medCardBody: { gap: 16 },
+
+    // Fraud Badge
+    fraudBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
+    fraudBadgeText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
+
+    // Info Rows (Refined)
+    infoRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
+    infoBlock: { flex: 1 },
+    infoLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
+    infoVal: { fontSize: 17, color: '#0F172A', fontWeight: '600', lineHeight: 24 },
+
+    // Section Styling (Restored)
+    sectionHeader: { fontSize: 13, fontWeight: '700', color: '#64748B', marginTop: 16, marginBottom: 8, letterSpacing: 0.5 },
+    bodyText: { fontSize: 15, color: '#334155', lineHeight: 24 },
+
+    // Clean Patient ID Card
+    patientIdCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 20,
+        marginBottom: 20, // Separation from next section
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    patientAvatarContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    patientDetails: { flex: 1 },
+    patientNameLarge: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+    patientSubDetails: { flexDirection: 'row', alignItems: 'center' },
+    patientMeta: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+    metaDivider: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#94A3B8',
+        marginHorizontal: 8,
+    },
+
+
+
+    // Clean Warnings
+    warningCardClean: {
+        backgroundColor: '#FFF',
+        borderLeftWidth: 4,
+        borderLeftColor: '#EF4444',
+        padding: 16,
+        marginBottom: 20,
+        borderRadius: 8, // Softer styling
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2
+    },
+    warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    warningTitleClean: { fontSize: 16, fontWeight: '700', color: '#B91C1C' },
+    warningTextClean: { fontSize: 14, color: '#334155', lineHeight: 22, marginTop: 4 },
+
+    // Clean Food Section
+    foodSectionClean: { marginBottom: 20 },
+    sectionHeaderLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginBottom: 12, letterSpacing: 1 },
+    foodItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    foodItemText: { fontSize: 15, color: '#334155' },
+
+    // Deprecated styles (kept empty to avoid breaks if referenced elsewhere, though mostly replaced)
+    patientInfo: {},
+    prescriptionVerification: {},
+    foodWarningSection: {},
+    warningCard: {},
+    warningText: {},
+    verificationHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    verificationTitle: { fontSize: 15, fontWeight: '700', color: '#15803D' },
+    signatureBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+    signatureBadgeText: { fontSize: 11, fontWeight: '700', color: '#166534' },
+    verificationRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+    verificationText: { fontSize: 13, color: '#166534' },
+
+
+
+    // Affordability
+    affordabilitySection: { marginTop: 24, padding: 20, backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    savingsCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+    savingsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    savingsTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+    genericName: { fontSize: 18, fontWeight: '700', color: '#0369A1', marginBottom: 4 },
+    savingsAmount: { fontSize: 14, color: '#10B981', fontWeight: '600', marginBottom: 8 },
+    pharmacyHint: { fontSize: 13, color: '#64748B' },
+
+    seniorDiscountCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 8,
+        paddingRight: 16,
+        backgroundColor: '#F3E8FF',
+        borderRadius: 100,
+        borderWidth: 1,
+        borderColor: '#E9D5FF',
+        marginBottom: 16,
+        gap: 12,
+        alignSelf: 'flex-start'
+    },
+    seniorDiscountBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#7C3AED',
+        borderRadius: 100,
+        gap: 6
+    },
+    seniorDiscountBadgeText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 0.5
+    },
+    seniorDiscountText: {
+        fontSize: 13,
+        color: '#6B21A8',
+        fontWeight: '700',
+        flex: 1
+    },
+    seniorDiscountHeader: {}, // Deprecated
+    seniorDiscountTitle: {}, // Deprecated
+
+    govAssistCard: { padding: 16, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+    govAssistHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    govAssistTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+    govAssistBody: { gap: 8 },
+    govAssistItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    govAssistContact: { fontSize: 13, fontWeight: '600', color: '#0369A1' },
+
+    philhealthCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 12 },
+    philhealthText: { fontSize: 13, color: '#64748B', flex: 1 },
+
+    // Action Buttons
+    actionRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+    primaryBtnRow: { flex: 1, backgroundColor: '#0369A1', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+    secondaryBtnFull: { width: '100%', paddingVertical: 14, borderRadius: 14, alignItems: 'center', backgroundColor: '#F1F5F9', marginTop: 12 },
+    secondaryBtnText: { fontSize: 15, fontWeight: '600', color: '#475569' },
+
+    // Controls
+    shutterOuter: { width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
 });
+
 

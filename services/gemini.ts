@@ -8,7 +8,7 @@ function validatePRCLicense(licenseNumber?: string): boolean {
     return numbers.length >= 6 && numbers.length <= 7;
 }
 
-function calculateAuthenticityScore(medicine: any): any {
+function calculateAuthenticityScore(medicine: MedicineAnalysis): FraudDetection {
     let score = 0;
     const passedChecks: string[] = [];
     const redFlags: string[] = [];
@@ -87,7 +87,11 @@ function calculateAuthenticityScore(medicine: any): any {
 // ========== END FRAUD DETECTION ==========
 
 // Initialize Gemini API
-const API_KEY = 'AIzaSyCkZ1Qv5tKAFSYKHTFj_xtGbmLOFs0tbho';
+const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+if (!API_KEY) {
+    throw new Error('Missing EXPO_PUBLIC_GEMINI_API_KEY in environment variables');
+}
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 export interface MedicineAnalysis {
@@ -267,7 +271,7 @@ function parseMedicineResponse(text: string): MedicineAnalysis[] {
         const items = Array.isArray(parsed) ? parsed : [parsed];
 
         for (const item of items) {
-            const medicine = {
+            const medicine: MedicineAnalysis = {
                 medicineName: item.medicineName || 'Unknown Medicine',
                 activeIngredients: item.activeIngredients || 'Not identified',
                 commonUses: item.commonUses || 'Not available',

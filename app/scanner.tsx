@@ -609,6 +609,24 @@ export default function Scanner() {
 
                                         return (
                                             <View key={index} style={styles.medCard}>
+                                                {/* 1. PATIENT INFORMATION (TOP PRIORITY) */}
+                                                {(med.patientName || med.patientAge || med.patientSex) && (
+                                                    <View style={styles.patientIdCard}>
+                                                        <View style={styles.patientAvatarContainer}>
+                                                            <Ionicons name="person" size={20} color="#6366F1" />
+                                                        </View>
+                                                        <View style={styles.patientDetails}>
+                                                            <Text style={styles.patientLabel}>PATIENT</Text>
+                                                            <Text style={styles.patientNameLarge}>{med.patientName || 'Unknown Patient'}</Text>
+                                                            <View style={styles.patientSubDetails}>
+                                                                <Text style={styles.patientMeta}>{med.patientAge ? `${med.patientAge}` : '--'}</Text>
+                                                                <View style={styles.metaDivider} />
+                                                                <Text style={styles.patientMeta}>{med.patientSex || '--'}</Text>
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                )}
+
                                                 <TouchableOpacity
                                                     style={styles.medCardHeader}
                                                     onPress={() => setExpandedMedIndex(isExpanded ? null : index)}
@@ -622,204 +640,139 @@ export default function Scanner() {
                                                             </View>
                                                         )}
                                                     </View>
-                                                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color="#8E8E93" />
+                                                    <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={24} color="#64748B" />
                                                 </TouchableOpacity>
 
-                                                {/* TTS Button (Header) */}
+                                                {/* TTS Button */}
                                                 <TouchableOpacity
-                                                    style={{ position: 'absolute', right: 50, top: 16 }}
+                                                    style={styles.ttsButtonTop}
                                                     onPress={() => handleSpeak(`${med.medicineName}. ${med.commonUses}`)}
                                                 >
-                                                    <Ionicons name="volume-medium" size={24} color="#4F46E5" />
+                                                    <Ionicons name="volume-medium" size={22} color="#2563EB" />
                                                 </TouchableOpacity>
 
-                                                {isExpanded && (
-                                                    <View style={styles.medCardBody}>
-                                                        <View style={styles.infoRow}>
-                                                            <View style={styles.infoBlock}>
-                                                                <Text style={styles.infoLabel}>DOSAGE</Text>
-                                                                <Text style={styles.infoVal}>{med.dosage || '--'}</Text>
-                                                            </View>
-                                                            <View style={styles.infoBlock}>
-                                                                <Text style={styles.infoLabel}>TIME</Text>
-                                                                <Text style={styles.infoVal}>{med.recommendedTime || '--'}</Text>
-                                                            </View>
+                                                <View style={styles.medCardBody}>
+                                                    {/* 2. CORE PRESCRIPTION DETAILS (Always visible) */}
+                                                    <View style={styles.coreDetailsRow}>
+                                                        <View style={styles.coreInfoBlock}>
+                                                            <Text style={styles.infoLabel}>DOSAGE</Text>
+                                                            <Text style={styles.infoVal}>{med.dosage || '--'}</Text>
                                                         </View>
-
-                                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                            <Text style={styles.sectionHeader}>PURPOSE</Text>
-                                                            <TouchableOpacity onPress={() => handleSpeak(med.commonUses)}>
-                                                                <Ionicons name="volume-high" size={16} color="#4F46E5" />
-                                                            </TouchableOpacity>
+                                                        <View style={styles.coreInfoBlock}>
+                                                            <Text style={styles.infoLabel}>TIME</Text>
+                                                            <Text style={styles.infoVal}>{med.recommendedTime || '--'}</Text>
                                                         </View>
-                                                        <Text style={styles.bodyText}>{med.commonUses}</Text>
-
-                                                        <Text style={styles.sectionHeader}>INGREDIENTS</Text>
-                                                        <Text style={styles.bodyText}>{med.activeIngredients}</Text>
-
-                                                        {/* CLEAN PATIENT ID CARD */}
-                                                        {(med.patientName || med.patientAge || med.patientSex) && (
-                                                            <View style={styles.patientIdCard}>
-                                                                <View style={styles.patientAvatarContainer}>
-                                                                    <Ionicons name="person" size={24} color="#FFF" />
-                                                                </View>
-                                                                <View style={styles.patientDetails}>
-                                                                    <Text style={styles.patientNameLarge}>{med.patientName || 'Unknown Patient'}</Text>
-                                                                    <View style={styles.patientSubDetails}>
-                                                                        <Text style={styles.patientMeta}>{med.patientAge ? `${med.patientAge} yrs` : '--'}</Text>
-                                                                        <View style={styles.metaDivider} />
-                                                                        <Text style={styles.patientMeta}>{med.patientSex || '--'}</Text>
-                                                                    </View>
-                                                                </View>
-                                                            </View>
-                                                        )}
                                                     </View>
-                                                )}
 
-                                                {/* PRESCRIPTION VERIFICATION */}
-                                                {(med.prescribedBy || med.hospital || med.signatureVerified) && (
-                                                    <View style={styles.prescriptionVerification}>
-                                                        <View style={styles.verificationHeader}>
-                                                            <Ionicons name="shield-checkmark" size={18} color="#059669" />
-                                                            <Text style={styles.verificationTitle}>Prescription Details</Text>
-                                                            {med.signatureVerified && (
-                                                                <View style={styles.signatureBadge}>
-                                                                    <Ionicons name="create" size={12} color="#FFF" />
-                                                                    <Text style={styles.signatureBadgeText}>Signed</Text>
+                                                    {isExpanded && (
+                                                        <View style={styles.expandedContent}>
+                                                            <View style={styles.sectionDivider} />
+
+                                                            <View style={styles.sectionHeaderRow}>
+                                                                <Text style={styles.sectionHeader}>PURPOSE</Text>
+                                                                <TouchableOpacity onPress={() => handleSpeak(med.commonUses)}>
+                                                                    <Ionicons name="volume-high" size={16} color="#2563EB" />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                            <Text style={styles.bodyText}>{med.commonUses}</Text>
+
+                                                            <Text style={styles.sectionHeader}>INGREDIENTS</Text>
+                                                            <Text style={styles.bodyText}>{med.activeIngredients}</Text>
+
+                                                            {/* PRESCRIPTION VERIFICATION */}
+                                                            {(med.prescribedBy || med.hospital || med.signatureVerified) && (
+                                                                <View style={styles.prescriptionVerification}>
+                                                                    <View style={styles.verificationHeader}>
+                                                                        <Ionicons name="shield-checkmark" size={18} color="#059669" />
+                                                                        <Text style={styles.verificationTitle}>Prescription Verified</Text>
+                                                                        {med.signatureVerified && (
+                                                                            <View style={styles.signatureBadge}>
+                                                                                <Text style={styles.signatureBadgeText}>SIGNED</Text>
+                                                                            </View>
+                                                                        )}
+                                                                    </View>
+                                                                    {med.prescribedBy && (
+                                                                        <View style={styles.verificationRow}>
+                                                                            <Text style={styles.verificationLabel}>Doctor: </Text>
+                                                                            <Text style={styles.verificationValue}>{med.prescribedBy}</Text>
+                                                                        </View>
+                                                                    )}
+                                                                    {med.hospital && (
+                                                                        <View style={styles.verificationRow}>
+                                                                            <Text style={styles.verificationLabel}>Clinic: </Text>
+                                                                            <Text style={styles.verificationValue}>{med.hospital}</Text>
+                                                                        </View>
+                                                                    )}
+                                                                    {med.licenseNumber && (
+                                                                        <View style={styles.verificationRow}>
+                                                                            <Text style={styles.verificationLabel}>License: </Text>
+                                                                            <Text style={styles.verificationValue}>{med.licenseNumber}</Text>
+                                                                        </View>
+                                                                    )}
+                                                                </View>
+                                                            )}
+
+                                                            {/* IMPORTANT WARNINGS */}
+                                                            {med.warnings && med.warnings.length > 0 && (
+                                                                <View style={styles.warningCardClean}>
+                                                                    <View style={styles.warningHeaderRow}>
+                                                                        <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                                                                        <Text style={styles.warningTitleClean}>Safety Warnings</Text>
+                                                                    </View>
+                                                                    {Array.isArray(med.warnings) ? med.warnings.map((w, i) => (
+                                                                        <Text key={i} style={styles.warningTextClean}>• {w}</Text>
+                                                                    )) : (
+                                                                        <Text style={styles.warningTextClean}>{med.warnings}</Text>
+                                                                    )}
+                                                                </View>
+                                                            )}
+
+                                                            {/* FOOD INTERACTIONS */}
+                                                            {med.foodWarnings && med.foodWarnings.length > 0 && (
+                                                                <View style={styles.foodSectionClean}>
+                                                                    <Text style={styles.sectionHeaderLabel}>FOOD INTERACTIONS</Text>
+                                                                    {med.foodWarnings.map((food, i) => (
+                                                                        <View key={i} style={styles.foodItemRow}>
+                                                                            <Ionicons name="restaurant-outline" size={16} color="#64748B" />
+                                                                            <Text style={styles.foodItemText}>{food}</Text>
+                                                                        </View>
+                                                                    ))}
+                                                                </View>
+                                                            )}
+
+                                                            {/* AFFORDABILITY */}
+                                                            {med.affordability && (
+                                                                <View style={styles.affordabilitySection}>
+                                                                    {med.affordability.genericAlternative && (
+                                                                        <View style={styles.savingsCard}>
+                                                                            <Text style={styles.savingsTitle}>GENERIC OPTION</Text>
+                                                                            <Text style={styles.genericName}>{med.affordability.genericAlternative}</Text>
+                                                                            {med.affordability.estimatedSavings && (
+                                                                                <Text style={styles.savingsAmount}>Potential Savings: {med.affordability.estimatedSavings}</Text>
+                                                                            )}
+                                                                        </View>
+                                                                    )}
+
+                                                                    {med.affordability.seniorDiscountEligible && (
+                                                                        <View style={styles.seniorDiscountCard}>
+                                                                            <Ionicons name="accessibility" size={16} color="#7C3AED" />
+                                                                            <Text style={styles.seniorDiscountText}>Senior Citizen/PWD Discount Eligible</Text>
+                                                                        </View>
+                                                                    )}
                                                                 </View>
                                                             )}
                                                         </View>
-                                                        {med.prescribedBy && (
-                                                            <View style={styles.verificationRow}>
-                                                                <Ionicons name="medkit" size={14} color="#047857" />
-                                                                <Text style={styles.verificationText}>Prescribed by: {med.prescribedBy}</Text>
-                                                            </View>
-                                                        )}
-                                                        {med.hospital && (
-                                                            <View style={styles.verificationRow}>
-                                                                <Ionicons name="business" size={14} color="#047857" />
-                                                                <Text style={styles.verificationText}>From: {med.hospital}</Text>
-                                                            </View>
-                                                        )}
-                                                        {med.licenseNumber && (
-                                                            <View style={styles.verificationRow}>
-                                                                <Ionicons name="card-outline" size={14} color="#047857" />
-                                                                <Text style={styles.verificationText}>License: {med.licenseNumber}</Text>
-                                                            </View>
-                                                        )}
-                                                        {med.signatureVerified && (
-                                                            <View style={styles.verificationRow}>
-                                                                <Ionicons name="checkmark-circle" size={14} color="#047857" />
-                                                                <Text style={styles.verificationText}>Doctor's signature verified on prescription</Text>
-                                                            </View>
-                                                        )}
+                                                    )}
+
+                                                    <View style={styles.actionRow}>
+                                                        <TouchableOpacity
+                                                            style={styles.primaryBtnRow}
+                                                            onPress={() => handleReminderPress(med)}
+                                                        >
+                                                            <Ionicons name="alarm-outline" size={20} color="#FFF" />
+                                                            <Text style={styles.primaryBtnText}>Set Reminder</Text>
+                                                        </TouchableOpacity>
                                                     </View>
-                                                )}
-
-                                                {/* IMPORTANT WARNINGS (Clean Red Accent) */}
-                                                {med.warnings && med.warnings.length > 0 && (
-                                                    <View style={styles.warningCardClean}>
-                                                        <View style={[styles.warningHeaderRow, { justifyContent: 'space-between' }]}>
-                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                                <Ionicons name="warning" size={20} color="#DC2626" />
-                                                                <Text style={styles.warningTitleClean}>Important Safety Warnings</Text>
-                                                            </View>
-                                                            <TouchableOpacity onPress={() => handleSpeak(`Warning. ${Array.isArray(med.warnings) ? med.warnings.join('. ') : med.warnings}`)}>
-                                                                <Ionicons name="volume-high" size={20} color="#DC2626" />
-                                                            </TouchableOpacity>
-                                                        </View>
-                                                        {Array.isArray(med.warnings) ? med.warnings.map((w, i) => (
-                                                            <Text key={i} style={styles.warningTextClean}>• {w}</Text>
-                                                        )) : (
-                                                            <Text style={styles.warningTextClean}>{med.warnings}</Text>
-                                                        )}
-                                                    </View>
-                                                )}
-
-                                                {/* FOOD INTERACTIONS (Minimal List) */}
-                                                {med.foodWarnings && med.foodWarnings.length > 0 && (
-                                                    <View style={styles.foodSectionClean}>
-                                                        <Text style={styles.sectionHeaderLabel}>FOOD INTERACTIONS</Text>
-                                                        {med.foodWarnings.map((food, i) => (
-                                                            <View key={i} style={styles.foodItemRow}>
-                                                                <Ionicons name="restaurant" size={16} color="#64748B" />
-                                                                <Text style={styles.foodItemText}>{food}</Text>
-                                                            </View>
-                                                        ))}
-                                                    </View>
-                                                )}
-
-                                                {/* AFFORDABILITY (Philippines) */}
-                                                {med.affordability && (
-                                                    <View style={styles.affordabilitySection}>
-                                                        {/* Generic Alternative */}
-                                                        {med.affordability.genericAlternative && (
-                                                            <View style={styles.savingsCard}>
-                                                                <View style={styles.savingsHeader}>
-                                                                    <Ionicons name="pricetag" size={20} color="#10B981" />
-                                                                    <Text style={styles.savingsTitle}>SAVE MONEY</Text>
-                                                                </View>
-                                                                <Text style={styles.genericName}>{med.affordability.genericAlternative}</Text>
-                                                                {med.affordability.estimatedSavings && (
-                                                                    <Text style={styles.savingsAmount}>Save {med.affordability.estimatedSavings}</Text>
-                                                                )}
-                                                                <Text style={styles.pharmacyHint}>Available at Generika, TGP, Mercury Drug</Text>
-                                                            </View>
-                                                        )}
-
-                                                        {/* Senior / PWD Priority ID (Compact) */}
-                                                        {med.affordability.seniorDiscountEligible && (
-                                                            <View style={styles.seniorDiscountCard}>
-                                                                <View style={styles.seniorDiscountBadge}>
-                                                                    <Ionicons name="accessibility" size={14} color="#FFF" />
-                                                                    <Text style={styles.seniorDiscountBadgeText}>SENIOR / PWD</Text>
-                                                                </View>
-                                                                <Text style={styles.seniorDiscountText} numberOfLines={1}>
-                                                                    20% Off & Priority Lane Access
-                                                                </Text>
-                                                            </View>
-                                                        )}
-
-                                                        {/* Government Assistance */}
-                                                        {med.affordability.governmentPrograms && med.affordability.governmentPrograms.length > 0 && (
-                                                            <View style={styles.govAssistCard}>
-                                                                <TouchableOpacity
-                                                                    style={styles.govAssistHeader}
-                                                                    onPress={() => {
-                                                                        // Toggle collapsed state (you can add state for this)
-                                                                    }}
-                                                                >
-                                                                    <Ionicons name="help-circle" size={18} color="#3B82F6" />
-                                                                    <Text style={styles.govAssistTitle}>Financial Assistance</Text>
-                                                                    <Ionicons name="chevron-down" size={16} color="#3B82F6" />
-                                                                </TouchableOpacity>
-                                                                <View style={styles.govAssistBody}>
-                                                                    {med.affordability.governmentPrograms.map((program, idx) => (
-                                                                        <Text key={idx} style={styles.govAssistItem}>• {program}</Text>
-                                                                    ))}
-                                                                    <Text style={styles.govAssistContact}>PCSO Hotline: 1-800-10-2476</Text>
-                                                                </View>
-                                                            </View>
-                                                        )}
-
-                                                        {/* PhilHealth Coverage */}
-                                                        {med.affordability.philHealthCoverage && (
-                                                            <View style={styles.philhealthCard}>
-                                                                <Ionicons name="shield-checkmark" size={16} color="#059669" />
-                                                                <Text style={styles.philhealthText}>PhilHealth: {med.affordability.philHealthCoverage}</Text>
-                                                            </View>
-                                                        )}
-                                                    </View>
-                                                )}
-
-                                                <View style={styles.actionRow}>
-                                                    <TouchableOpacity
-                                                        style={styles.primaryBtnRow}
-                                                        onPress={() => handleReminderPress(med)}
-                                                    >
-                                                        <Ionicons name="alarm-outline" size={20} color="#FFF" />
-                                                        <Text style={styles.primaryBtnText}>Set Reminder</Text>
-                                                    </TouchableOpacity>
                                                 </View>
                                             </View>
                                         )
@@ -853,7 +806,8 @@ export default function Scanner() {
                 </View >
             ) : (
                 // Mode 2: Camera Viewfinder
-                <CameraView ref={cameraRef} style={styles.camera} facing="back">
+                <View style={{ flex: 1 }}>
+                    <CameraView ref={cameraRef} style={styles.camera} facing="back" />
                     {/* Controls Overlay */}
                     <SafeAreaView style={styles.overlayContainer}>
                         {/* Top Bar - No Back Arrow as requested, just empty or flash controls if we added them */}
@@ -882,7 +836,7 @@ export default function Scanner() {
                             </View>
                         </View>
                     </SafeAreaView>
-                </CameraView>
+                </View>
             )}
 
             {/* --- GLOBAL MODALS (Always at root) --- */}
@@ -930,12 +884,21 @@ export default function Scanner() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#000' },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
     fullScreenImage: { width: '100%', height: '100%', resizeMode: 'cover' },
     camera: { flex: 1 },
 
     // Camera Overlay
-    overlayContainer: { flex: 1, justifyContent: 'space-between' },
+    // Camera Overlay
+    overlayContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'space-between',
+        zIndex: 10
+    },
     headerBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -958,16 +921,6 @@ const styles = StyleSheet.create({
     },
 
     // Buttons
-    shutterBtn: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        borderWidth: 4,
-        borderColor: 'rgba(255,255,255,0.3)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0,0,0,0.2)'
-    },
     shutterInner: {
         width: 64,
         height: 64,
@@ -1010,7 +963,7 @@ const styles = StyleSheet.create({
     // Loading & Analysis
     darkOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: 'rgba(15, 23, 42, 0.85)',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 20
@@ -1019,7 +972,8 @@ const styles = StyleSheet.create({
         color: '#FFF',
         marginTop: 20,
         fontSize: 18,
-        fontWeight: '600'
+        fontWeight: '600',
+        letterSpacing: 1
     },
 
     // Pre-Analysis / Bottom Actions
@@ -1034,10 +988,10 @@ const styles = StyleSheet.create({
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: '#0369A1',
+        backgroundColor: '#2563EB',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: '#2563EB',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -1046,224 +1000,107 @@ const styles = StyleSheet.create({
     instructionText: {
         color: '#FFF',
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: '600',
         textShadowColor: 'rgba(0,0,0,0.5)',
         textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2
+        textShadowRadius: 2,
+        letterSpacing: 0.5
     },
 
-    // Picker Styles (Restored)
-    pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    // Modal Styles
+    pickerOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
     pickerCard: {
         backgroundColor: '#FFF',
         width: '100%',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
-        padding: 28,
+        padding: 24,
         maxHeight: '90%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 10,
     },
     pickerHeaderContainer: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         gap: 12,
         marginBottom: 24,
     },
-    pickerHeader: { fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
-    pickerSubHeader: { fontSize: 14, color: '#64748B', flexDirection: 'row', alignItems: 'center', gap: 4 },
+    pickerHeader: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+    pickerSubHeader: { fontSize: 13, color: '#64748B', fontWeight: '600' },
 
     timeSelectRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, alignSelf: 'center' },
-    timeCol: { alignItems: 'center', gap: 12 },
+    timeCol: { alignItems: 'center', gap: 8 },
     chevronBtn: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#E0F2FE',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#F1F5F9',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    timeDigit: { fontSize: 72, fontWeight: '300', minWidth: 90, textAlign: 'center', color: '#0369A1' },
-    timeSeparator: { fontSize: 72, fontWeight: '200', marginHorizontal: 16, paddingBottom: 10, color: '#94A3B8' },
+    timeDigit: { fontSize: 64, fontWeight: '800', minWidth: 80, textAlign: 'center', color: '#0F172A' },
+    timeSeparator: { fontSize: 64, fontWeight: '200', marginHorizontal: 8, color: '#CBD5E1' },
 
-    amPmCol: { marginLeft: 20, gap: 12 },
+    amPmCol: { marginLeft: 16, gap: 8 },
     amPmBox: {
-        paddingVertical: 12,
-        paddingHorizontal: 18,
-        borderRadius: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
         backgroundColor: '#F1F5F9',
-        minWidth: 60,
+        minWidth: 56,
         alignItems: 'center',
     },
-    amPmSelected: { backgroundColor: '#0369A1' },
-    amPmLabel: { fontSize: 16, fontWeight: '600', color: '#64748B' },
+    amPmSelected: { backgroundColor: '#0F172A' },
+    amPmLabel: { fontSize: 14, fontWeight: '700', color: '#64748B' },
     amPmLabelSelected: { color: '#FFF' },
 
-    pickerBtnRow: { flexDirection: 'row', gap: 12, width: '100%', marginTop: 20 },
-    pickerBtnCancel: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
-    pickerBtnConfirm: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#0369A1', alignItems: 'center' },
-    pickerBtnTextCancel: { fontSize: 16, fontWeight: '600', color: '#0F172A' },
-    pickerBtnTextConfirm: { fontSize: 16, fontWeight: '600', color: '#FFF' },
+    pickerBtnRow: { flexDirection: 'row', gap: 12, width: '100%', marginTop: 24 },
+    pickerBtnCancel: { flex: 1, padding: 16, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center' },
+    pickerBtnConfirm: { flex: 1, padding: 16, borderRadius: 16, backgroundColor: '#2563EB', alignItems: 'center' },
+    pickerBtnTextCancel: { fontSize: 16, fontWeight: '700', color: '#64748B' },
+    pickerBtnTextConfirm: { fontSize: 16, fontWeight: '700', color: '#FFF' },
 
     // Tone Selector
-    toneSectionDivider: {
-        height: 1,
-        backgroundColor: '#E2E8F0',
-        marginVertical: 20,
-    },
-    toneLabel: {
-        fontSize: 12,
-        fontWeight: '800',
-        color: '#64748B',
-        letterSpacing: 1.5,
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    toneList: {
-        gap: 10,
-        marginBottom: 24,
-    },
+    toneSectionDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 24 },
+    toneLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 16, textTransform: 'uppercase' },
+    toneList: { gap: 10, marginBottom: 24 },
     toneItem: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 20,
         borderWidth: 2,
-        borderColor: '#E2E8F0',
+        borderColor: '#F1F5F9',
         backgroundColor: '#FAFBFC',
         gap: 14,
     },
-    toneIconBox: {
-        width: 56,
-        height: 56,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    toneTextCol: {
-        flex: 1,
-    },
-    toneName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#0F172A',
-        marginBottom: 2,
-    },
-    toneDesc: {
-        fontSize: 12,
-        color: '#64748B',
-        lineHeight: 16,
-    },
+    toneIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    toneTextCol: { flex: 1 },
+    toneName: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
+    toneDesc: { fontSize: 12, color: '#64748B', lineHeight: 16 },
 
-    // Success Modal
-    successOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    successCard: {
-        backgroundColor: '#FFF',
-        borderRadius: 24,
-        padding: 32,
-        alignItems: 'center',
-        width: '90%',
-        maxWidth: 400,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 16,
-        elevation: 12,
-    },
-    successIconCircle: {
-        marginBottom: 16,
-    },
-    successTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#0F172A',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    successDetailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        marginVertical: 6,
-        backgroundColor: '#F0F9FF',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        width: '100%',
-    },
-    successTime: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#0369A1',
-    },
-    successAlarm: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#0369A1',
-    },
-
-    // --- Restored Missing Styles ---
+    // Recent Scans
     recentItem: {
         flexDirection: 'row',
         padding: 16,
-        backgroundColor: '#FAFBFC',
-        borderRadius: 16,
-        marginBottom: 12,
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        marginBottom: 16,
         alignItems: 'center',
         gap: 16,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+        // Minimalist Card Style with Accent
+        borderLeftWidth: 4,
+        borderLeftColor: '#2563EB',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    recentThumb: {
-        width: 56,
-        height: 56,
-        borderRadius: 12,
-        backgroundColor: '#E2E8F0',
-    },
-    recentInfo: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    recentName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#0F172A',
-        marginBottom: 4,
-    },
-    recentTime: {
-        fontSize: 12,
-        color: '#64748B',
-    },
+    recentThumb: { width: 60, height: 60, borderRadius: 14, backgroundColor: '#F1F5F9' },
+    recentInfo: { flex: 1 },
+    recentName: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
+    recentTime: { fontSize: 13, color: '#64748B' },
 
-    // Empty States & Sheets
-    emptyState: { alignItems: 'center', padding: 40, opacity: 0.6 },
-    emptyText: { marginTop: 16, fontSize: 16, color: '#64748B' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%', paddingBottom: 40 },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-    sheetTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-    closeIconBtn: { padding: 4 },
-    recentList: { padding: 20 },
-
-    // Permissions
-    permContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#000' },
-    permTitle: { fontSize: 20, fontWeight: '700', color: '#FFF', marginBottom: 12 },
-    permDesc: { fontSize: 16, color: '#CBD5E1', textAlign: 'center', marginBottom: 24 },
-    permBtn: { backgroundColor: '#0369A1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-    permBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
-
-    // Results / Analysis Styles
+    // Results Layout
     bottomSheetContainer: {
         position: 'absolute',
         bottom: 0,
@@ -1272,202 +1109,152 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8FAFC',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
-        height: '85%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 20,
+        height: '88%',
     },
     bottomSheetContent: { flex: 1 },
-    dragHandle: { width: 40, height: 4, backgroundColor: '#CBD5E1', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
-    resultsScroll: { padding: 20, paddingBottom: 100 },
+    dragHandle: { width: 36, height: 5, backgroundColor: '#E2E8F0', borderRadius: 10, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
+    resultsScroll: { padding: 20, paddingBottom: 120 },
 
-    // Error State
-    errorTitle: { fontSize: 18, fontWeight: '700', color: '#EF4444', marginBottom: 8 },
-    errorDesc: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 16 },
-    primaryBtn: { backgroundColor: '#0369A1', paddingVertical: 14, borderRadius: 14, alignItems: 'center', width: '100%' },
-    primaryBtnText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
-
-
-
-    // Alerts
-    alertBanner: { padding: 16, borderRadius: 16, marginBottom: 16, gap: 8 },
-    alertHigh: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
-    alertMedium: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A' },
-    alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    alertTitle: { fontSize: 16, fontWeight: '700', color: '#991B1B' },
-    alertDesc: { fontSize: 14, color: '#B91C1C', lineHeight: 20 },
-
-    // Medication Card
-    // Medication Card (Premium)
+    // Med Card (Modern & Clean)
     medCard: {
         backgroundColor: '#FFF',
-        borderRadius: 24,
+        borderRadius: 28,
         padding: 24,
-        marginBottom: 20,
-        shadowColor: '#64748B',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.08,
-        shadowRadius: 24,
-        elevation: 8,
+        marginBottom: 24,
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.05,
+        shadowRadius: 20,
+        elevation: 4,
         borderWidth: 1,
         borderColor: '#F1F5F9'
     },
-    medCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-    medCardTitle: { fontSize: 24, fontWeight: '800', color: '#1E293B', flex: 1, marginRight: 10, letterSpacing: -0.5 },
-    medCardBody: { gap: 16 },
 
-    // Fraud Badge
-    fraudBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
-    fraudBadgeText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
-
-    // Info Rows (Refined)
-    infoRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-    infoBlock: { flex: 1 },
-    infoLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
-    infoVal: { fontSize: 17, color: '#0F172A', fontWeight: '600', lineHeight: 24 },
-
-    // Section Styling (Restored)
-    sectionHeader: { fontSize: 13, fontWeight: '700', color: '#64748B', marginTop: 16, marginBottom: 8, letterSpacing: 0.5 },
-    bodyText: { fontSize: 15, color: '#334155', lineHeight: 24 },
-
-    // Clean Patient ID Card
+    // 1. Patient Section (NEW REORG)
     patientIdCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#F8FAFC',
-        borderRadius: 20,
-        marginBottom: 20, // Separation from next section
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
+        padding: 0,
+        marginBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+        paddingBottom: 20
     },
     patientAvatarContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#CBD5E1',
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: '#FFF',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 16,
     },
     patientDetails: { flex: 1 },
-    patientNameLarge: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-    patientSubDetails: { flexDirection: 'row', alignItems: 'center' },
-    patientMeta: { fontSize: 14, color: '#64748B', fontWeight: '500' },
-    metaDivider: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#94A3B8',
-        marginHorizontal: 8,
-    },
+    patientLabel: { fontSize: 10, fontWeight: '800', color: '#6366F1', letterSpacing: 1, marginBottom: 2 },
+    patientNameLarge: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
+    patientSubDetails: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+    patientMeta: { fontSize: 13, color: '#64748B', fontWeight: '600' },
+    metaDivider: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#CBD5E1', marginHorizontal: 8 },
 
+    // 2. Medicine Section
+    medCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+    medCardTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', flex: 1, letterSpacing: -0.5 },
+    ttsButtonTop: { position: 'absolute', right: 24, top: 80, width: 44, height: 44, borderRadius: 22, backgroundColor: '#F0F7FF', alignItems: 'center', justifyContent: 'center' },
 
+    fraudBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 6, alignSelf: 'flex-start' },
+    fraudBadgeText: { fontSize: 11, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
 
-    // Clean Warnings
-    warningCardClean: {
-        backgroundColor: '#FFF',
-        borderLeftWidth: 4,
-        borderLeftColor: '#EF4444',
-        padding: 16,
-        marginBottom: 20,
-        borderRadius: 8, // Softer styling
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2
-    },
-    warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-    warningTitleClean: { fontSize: 16, fontWeight: '700', color: '#B91C1C' },
-    warningTextClean: { fontSize: 14, color: '#334155', lineHeight: 22, marginTop: 4 },
+    medCardBody: { gap: 16 },
+    coreDetailsRow: { flexDirection: 'row', backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, gap: 16 },
+    coreInfoBlock: { flex: 1 },
+    infoLabel: { fontSize: 10, fontWeight: '800', color: '#94A3B8', marginBottom: 4, letterSpacing: 1 },
+    infoVal: { fontSize: 16, color: '#334155', fontWeight: '700' },
 
-    // Clean Food Section
-    foodSectionClean: { marginBottom: 20 },
-    sectionHeaderLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginBottom: 12, letterSpacing: 1 },
-    foodItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    foodItemText: { fontSize: 15, color: '#334155' },
+    // Expanded Content
+    expandedContent: { gap: 20, marginTop: 4 },
+    sectionDivider: { height: 1.5, backgroundColor: '#F1F5F9', marginVertical: 4 },
+    sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    sectionHeader: { fontSize: 12, fontWeight: '800', color: '#64748B', letterSpacing: 1 },
+    bodyText: { fontSize: 15, color: '#334155', lineHeight: 24, fontWeight: '500' },
 
-    // Deprecated styles (kept empty to avoid breaks if referenced elsewhere, though mostly replaced)
-    patientInfo: {},
-    prescriptionVerification: {},
-    foodWarningSection: {},
-    warningCard: {},
-    warningText: {},
-    verificationHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-    verificationTitle: { fontSize: 15, fontWeight: '700', color: '#15803D' },
-    signatureBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    signatureBadgeText: { fontSize: 11, fontWeight: '700', color: '#166534' },
-    verificationRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-    verificationText: { fontSize: 13, color: '#166534' },
+    // Prescription Verification
+    prescriptionVerification: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: '#22C55E', marginTop: 8, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+    verificationHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    verificationTitle: { fontSize: 15, fontWeight: '800', color: '#166534' },
+    signatureBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+    signatureBadgeText: { fontSize: 9, fontWeight: '900', color: '#166534' },
+    verificationRow: { flexDirection: 'row', marginBottom: 4 },
+    verificationLabel: { fontSize: 13, fontWeight: '700', color: '#15803D' },
+    verificationValue: { fontSize: 13, color: '#334155', flex: 1 },
 
+    // Warnings & Food
+    warningCardClean: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: '#EF4444', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+    warningTitleClean: { fontSize: 15, fontWeight: '800', color: '#991B1B' },
+    warningTextClean: { fontSize: 14, color: '#334155', lineHeight: 22, marginTop: 4, fontWeight: '500' },
+    warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
 
+    foodSectionClean: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: '#64748B', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+    sectionHeaderLabel: { fontSize: 11, fontWeight: '800', color: '#64748B', letterSpacing: 1, marginBottom: 12 },
+    foodItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+    foodItemText: { fontSize: 14, color: '#334155', fontWeight: '600' },
 
     // Affordability
-    affordabilitySection: { marginTop: 24, padding: 20, backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-    savingsCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    savingsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    savingsTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-    genericName: { fontSize: 18, fontWeight: '700', color: '#0369A1', marginBottom: 4 },
-    savingsAmount: { fontSize: 14, color: '#10B981', fontWeight: '600', marginBottom: 8 },
-    pharmacyHint: { fontSize: 13, color: '#64748B' },
+    affordabilitySection: { gap: 12 },
+    savingsCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: '#059669', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+    savingsTitle: { fontSize: 10, fontWeight: '900', color: '#059669', letterSpacing: 1, marginBottom: 4 },
+    genericName: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+    savingsAmount: { fontSize: 13, color: '#059669', marginTop: 2, fontWeight: '700' },
 
-    seniorDiscountCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 8,
-        paddingRight: 16,
-        backgroundColor: '#F3E8FF',
-        borderRadius: 100,
-        borderWidth: 1,
-        borderColor: '#E9D5FF',
-        marginBottom: 16,
-        gap: 12,
-        alignSelf: 'flex-start'
-    },
-    seniorDiscountBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: '#7C3AED',
-        borderRadius: 100,
-        gap: 6
-    },
-    seniorDiscountBadgeText: {
-        color: '#FFF',
-        fontSize: 11,
-        fontWeight: '800',
-        letterSpacing: 0.5
-    },
-    seniorDiscountText: {
-        fontSize: 13,
-        color: '#6B21A8',
-        fontWeight: '700',
-        flex: 1
-    },
-    seniorDiscountHeader: {}, // Deprecated
-    seniorDiscountTitle: {}, // Deprecated
+    seniorDiscountCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFF', padding: 16, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#7C3AED', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+    seniorDiscountText: { fontSize: 13, fontWeight: '700', color: '#5B21B6' },
 
-    govAssistCard: { padding: 16, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    govAssistHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    govAssistTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-    govAssistBody: { gap: 8 },
-    govAssistItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    govAssistContact: { fontSize: 13, fontWeight: '600', color: '#0369A1' },
+    // General UI
+    actionRow: { marginTop: 12 },
+    primaryBtnRow: { backgroundColor: '#2563EB', paddingVertical: 16, borderRadius: 18, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+    secondaryBtnFull: { width: '100%', paddingVertical: 16, borderRadius: 18, alignItems: 'center', backgroundColor: '#F1F5F9', marginTop: 16, flexDirection: 'row', justifyContent: 'center', gap: 8 },
+    secondaryBtnText: { fontSize: 15, fontWeight: '700', color: '#475569' },
 
-    philhealthCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 12 },
-    philhealthText: { fontSize: 13, color: '#64748B', flex: 1 },
+    shutterOuter: { width: 84, height: 84, borderRadius: 42, borderWidth: 5, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
 
-    // Action Buttons
-    actionRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
-    primaryBtnRow: { flex: 1, backgroundColor: '#0369A1', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-    secondaryBtnFull: { width: '100%', paddingVertical: 14, borderRadius: 14, alignItems: 'center', backgroundColor: '#F1F5F9', marginTop: 12 },
-    secondaryBtnText: { fontSize: 15, fontWeight: '600', color: '#475569' },
+    // Fallbacks & Missing (Fixed Lint Errors)
+    emptyState: { alignItems: 'center', padding: 40, opacity: 0.6 },
+    emptyText: { marginTop: 16, fontSize: 16, color: '#64748B', fontWeight: '600' },
 
-    // Controls
-    shutterOuter: { width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+    permContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#0F172A' },
+    permTitle: { fontSize: 24, fontWeight: '800', color: '#FFF', marginBottom: 12, textAlign: 'center' },
+    permDesc: { fontSize: 16, color: '#94A3B8', textAlign: 'center', marginBottom: 32, lineHeight: 24 },
+    permBtn: { backgroundColor: '#2563EB', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 20 },
+    permBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+    primaryBtn: { backgroundColor: '#2563EB', paddingVertical: 16, borderRadius: 20, alignItems: 'center', width: '100%' },
+    primaryBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+
+    alertBanner: { padding: 16, borderRadius: 20, marginBottom: 16, gap: 8 },
+    alertHigh: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
+    alertMedium: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A' },
+    alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    alertTitle: { fontSize: 16, fontWeight: '800', color: '#991B1B' },
+    alertDesc: { fontSize: 14, color: '#B91C1C', lineHeight: 20, fontWeight: '500' },
+
+    successIconCircle: { marginBottom: 20, alignItems: 'center' },
+
+    // Fallbacks
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingBottom: 40 },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    sheetTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+    closeIconBtn: { padding: 4 },
+    recentList: { padding: 20 },
+
+    successOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.8)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    successCard: { backgroundColor: '#FFF', borderRadius: 32, padding: 32, alignItems: 'center', width: '100%', shadowColor: '#000', shadowRadius: 30, shadowOpacity: 0.2 },
+    successTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', marginBottom: 24 },
+    successDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0F9FF', padding: 16, borderRadius: 20, width: '100%', marginBottom: 10 },
+    successTime: { fontSize: 18, fontWeight: '700', color: '#2563EB' },
+    successAlarm: { fontSize: 15, fontWeight: '600', color: '#2563EB' },
+
+    errorTitle: { fontSize: 20, fontWeight: '800', color: '#EF4444', textAlign: 'center', marginTop: 20 },
+    errorDesc: { fontSize: 16, color: '#64748B', textAlign: 'center', marginVertical: 16, paddingHorizontal: 20 },
 });
 
 

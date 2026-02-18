@@ -87,7 +87,7 @@ function calculateAuthenticityScore(medicine: any): any {
 // ========== END FRAUD DETECTION ==========
 
 // Initialize Gemini API
-const API_KEY = 'AIzaSyDr3Te0B4cwAg8C8WI4AvVB866pdjEjqGg';
+const API_KEY = 'AIzaSyCkZ1Qv5tKAFSYKHTFj_xtGbmLOFs0tbho';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 export interface MedicineAnalysis {

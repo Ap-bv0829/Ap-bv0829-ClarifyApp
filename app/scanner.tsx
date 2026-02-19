@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -287,6 +288,7 @@ export default function Scanner() {
     const [interactionReport, setInteractionReport] = useState<InteractionReport | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [flash, setFlash] = useState(false);
 
     // UI State
     const [showTimePicker, setShowTimePicker] = useState(false);
@@ -378,7 +380,9 @@ export default function Scanner() {
 
     const takePhoto = async () => {
         if (cameraRef.current) {
-            const result = await cameraRef.current.takePictureAsync({ quality: 0.8 });
+            const result = await cameraRef.current.takePictureAsync({
+                quality: 0.3,
+            });
             if (result) {
                 setPhoto(result.uri);
                 setError(null);
@@ -450,6 +454,17 @@ export default function Scanner() {
 
     const identifyMedicine = async () => {
         if (!photo) return;
+
+        // Offline Check
+        const netState = await NetInfo.fetch();
+        if (!netState.isConnected) {
+            Alert.alert(
+                "No Internet Connection",
+                "You need an internet connection to identify new medicines. Please check your settings."
+            );
+            return;
+        }
+
         setIsAnalyzing(true);
         setError(null);
         setInteractionReport(null);
@@ -854,7 +869,12 @@ export default function Scanner() {
             ) : (
                 // Mode 2: Camera Viewfinder
                 <View style={styles.camera}>
-                    <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+                    <CameraView
+                        ref={cameraRef}
+                        style={StyleSheet.absoluteFill}
+                        facing="back"
+                        enableTorch={flash}
+                    />
                     {/* Controls Overlay */}
                     <SafeAreaView style={styles.overlayContainer}>
                         {/* Top Bar - No Back Arrow as requested, just empty or flash controls if we added them */}
@@ -876,11 +896,13 @@ export default function Scanner() {
                             </TouchableOpacity>
 
                             {/* Placeholder (Right) for symmetry */}
-                            <View style={styles.controlBtn}>
-                                {/* Future: Flash/Gallery upload */}
-                                <View style={[styles.blurCircle, { opacity: 0 }]} />
-                                <Text style={[styles.controlLabel, { opacity: 0 }]}>Flash</Text>
-                            </View>
+                            {/* Flash Button (Right) */}
+                            <TouchableOpacity style={styles.controlBtn} onPress={() => setFlash(!flash)}>
+                                <View style={[styles.blurCircle, flash && { backgroundColor: 'rgba(255, 215, 0, 0.6)' }]}>
+                                    <Ionicons name={flash ? "flash" : "flash-off"} size={24} color={flash ? "#FFF" : "#FFF"} />
+                                </View>
+                                <Text style={styles.controlLabel}>{flash ? "On" : "Off"}</Text>
+                            </TouchableOpacity>
                         </View>
                     </SafeAreaView>
                 </View>
@@ -930,6 +952,8 @@ export default function Scanner() {
     );
 }
 
+import { moderateScale, scale, verticalScale } from '../utils/responsive';
+
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
     fullScreenImage: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -940,29 +964,29 @@ const styles = StyleSheet.create({
     headerBar: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 10,
+        paddingHorizontal: scale(20),
+        paddingTop: verticalScale(10),
         zIndex: 10
     },
     topOverlay: {
         position: 'absolute',
-        top: 40,
-        left: 20,
+        top: verticalScale(40),
+        left: scale(20),
         zIndex: 10
     },
     bottomControls: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
-        paddingHorizontal: 30,
-        paddingBottom: 40,
+        paddingHorizontal: scale(30),
+        paddingBottom: verticalScale(40),
     },
 
     // Buttons
     shutterBtn: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: scale(80),
+        height: scale(80),
+        borderRadius: scale(40),
         borderWidth: 4,
         borderColor: 'rgba(255,255,255,0.3)',
         alignItems: 'center',
@@ -970,7 +994,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.2)'
     },
     shutterInner: {
-        width: 64,
+        width: 64, // Keep constant for clear inner circle
         height: 64,
         borderRadius: 32,
         backgroundColor: '#FFF',
@@ -978,31 +1002,31 @@ const styles = StyleSheet.create({
     controlBtn: {
         alignItems: 'center',
         justifyContent: 'center',
-        width: 60,
-        height: 60
+        width: scale(60),
+        height: scale(60)
     },
     controlLabel: {
         color: '#FFF',
-        fontSize: 12,
-        marginTop: 4,
+        fontSize: moderateScale(12),
+        marginTop: verticalScale(4),
         fontWeight: '600',
         textShadowColor: 'rgba(0,0,0,0.5)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2
     },
     blurCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: scale(44),
+        height: scale(44),
+        borderRadius: scale(22),
         backgroundColor: 'rgba(0,0,0,0.4)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 4
+        marginBottom: verticalScale(4)
     },
     iconBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: scale(44),
+        height: scale(44),
+        borderRadius: scale(22),
         backgroundColor: 'rgba(0,0,0,0.5)',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1018,23 +1042,23 @@ const styles = StyleSheet.create({
     },
     loadingText: {
         color: '#FFF',
-        marginTop: 20,
-        fontSize: 18,
+        marginTop: verticalScale(20),
+        fontSize: moderateScale(18),
         fontWeight: '600'
     },
 
     // Pre-Analysis / Bottom Actions
     bottomActions: {
         position: 'absolute',
-        bottom: 50,
+        bottom: verticalScale(50),
         alignSelf: 'center',
         alignItems: 'center',
-        gap: 12
+        gap: verticalScale(12)
     },
     largeFab: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+        width: scale(72),
+        height: scale(72),
+        borderRadius: scale(36),
         backgroundColor: '#0369A1',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1046,7 +1070,7 @@ const styles = StyleSheet.create({
     },
     instructionText: {
         color: '#FFF',
-        fontSize: 14,
+        fontSize: moderateScale(14),
         fontWeight: '500',
         textShadowColor: 'rgba(0,0,0,0.5)',
         textShadowOffset: { width: 0, height: 1 },
@@ -1060,7 +1084,7 @@ const styles = StyleSheet.create({
         width: '100%',
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
-        padding: 28,
+        padding: scale(28),
         maxHeight: '90%',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
@@ -1071,77 +1095,77 @@ const styles = StyleSheet.create({
     pickerHeaderContainer: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        gap: 12,
-        marginBottom: 24,
+        gap: scale(12),
+        marginBottom: verticalScale(24),
     },
-    pickerHeader: { fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
-    pickerSubHeader: { fontSize: 14, color: '#64748B', flexDirection: 'row', alignItems: 'center', gap: 4 },
+    pickerHeader: { fontSize: moderateScale(20), fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+    pickerSubHeader: { fontSize: moderateScale(14), color: '#64748B', flexDirection: 'row', alignItems: 'center', gap: 4 },
 
-    timeSelectRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, alignSelf: 'center' },
-    timeCol: { alignItems: 'center', gap: 12 },
+    timeSelectRow: { flexDirection: 'row', alignItems: 'center', marginBottom: verticalScale(24), alignSelf: 'center' },
+    timeCol: { alignItems: 'center', gap: verticalScale(12) },
     chevronBtn: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: scale(50),
+        height: scale(50),
+        borderRadius: scale(25),
         backgroundColor: '#E0F2FE',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    timeDigit: { fontSize: 72, fontWeight: '300', minWidth: 90, textAlign: 'center', color: '#0369A1' },
-    timeSeparator: { fontSize: 72, fontWeight: '200', marginHorizontal: 16, paddingBottom: 10, color: '#94A3B8' },
+    timeDigit: { fontSize: moderateScale(72), fontWeight: '300', minWidth: scale(90), textAlign: 'center', color: '#0369A1' },
+    timeSeparator: { fontSize: moderateScale(72), fontWeight: '200', marginHorizontal: scale(16), paddingBottom: 10, color: '#94A3B8' },
 
-    amPmCol: { marginLeft: 20, gap: 12 },
+    amPmCol: { marginLeft: scale(20), gap: verticalScale(12) },
     amPmBox: {
-        paddingVertical: 12,
-        paddingHorizontal: 18,
+        paddingVertical: verticalScale(12),
+        paddingHorizontal: scale(18),
         borderRadius: 16,
         backgroundColor: '#F1F5F9',
-        minWidth: 60,
+        minWidth: scale(60),
         alignItems: 'center',
     },
     amPmSelected: { backgroundColor: '#0369A1' },
-    amPmLabel: { fontSize: 16, fontWeight: '600', color: '#64748B' },
+    amPmLabel: { fontSize: moderateScale(16), fontWeight: '600', color: '#64748B' },
     amPmLabelSelected: { color: '#FFF' },
 
-    pickerBtnRow: { flexDirection: 'row', gap: 12, width: '100%', marginTop: 20 },
-    pickerBtnCancel: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
-    pickerBtnConfirm: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#0369A1', alignItems: 'center' },
-    pickerBtnTextCancel: { fontSize: 16, fontWeight: '600', color: '#0F172A' },
-    pickerBtnTextConfirm: { fontSize: 16, fontWeight: '600', color: '#FFF' },
+    pickerBtnRow: { flexDirection: 'row', gap: scale(12), width: '100%', marginTop: verticalScale(20) },
+    pickerBtnCancel: { flex: 1, padding: verticalScale(14), borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
+    pickerBtnConfirm: { flex: 1, padding: verticalScale(14), borderRadius: 12, backgroundColor: '#0369A1', alignItems: 'center' },
+    pickerBtnTextCancel: { fontSize: moderateScale(16), fontWeight: '600', color: '#0F172A' },
+    pickerBtnTextConfirm: { fontSize: moderateScale(16), fontWeight: '600', color: '#FFF' },
 
     // Tone Selector
     toneSectionDivider: {
         height: 1,
         backgroundColor: '#E2E8F0',
-        marginVertical: 20,
+        marginVertical: verticalScale(20),
     },
     toneLabel: {
-        fontSize: 12,
+        fontSize: moderateScale(12),
         fontWeight: '800',
         color: '#64748B',
         letterSpacing: 1.5,
-        marginBottom: 16,
+        marginBottom: verticalScale(16),
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
     },
     toneList: {
-        gap: 10,
-        marginBottom: 24,
+        gap: verticalScale(10),
+        marginBottom: verticalScale(24),
     },
     toneItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
+        padding: scale(16),
         borderRadius: 16,
         borderWidth: 2,
         borderColor: '#E2E8F0',
         backgroundColor: '#FAFBFC',
-        gap: 14,
+        gap: scale(14),
     },
     toneIconBox: {
-        width: 56,
-        height: 56,
+        width: scale(56),
+        height: scale(56),
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
@@ -1150,13 +1174,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     toneName: {
-        fontSize: 16,
+        fontSize: moderateScale(16),
         fontWeight: '700',
         color: '#0F172A',
         marginBottom: 2,
     },
     toneDesc: {
-        fontSize: 12,
+        fontSize: moderateScale(12),
         color: '#64748B',
         lineHeight: 16,
     },
@@ -1167,12 +1191,12 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: scale(20),
     },
     successCard: {
         backgroundColor: '#FFF',
         borderRadius: 24,
-        padding: 32,
+        padding: scale(32),
         alignItems: 'center',
         width: '90%',
         maxWidth: 400,
@@ -1183,33 +1207,33 @@ const styles = StyleSheet.create({
         elevation: 12,
     },
     successIconCircle: {
-        marginBottom: 16,
+        marginBottom: verticalScale(16),
     },
     successTitle: {
-        fontSize: 24,
+        fontSize: moderateScale(24),
         fontWeight: '700',
         color: '#0F172A',
-        marginBottom: 20,
+        marginBottom: verticalScale(20),
         textAlign: 'center',
     },
     successDetailRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        marginVertical: 6,
+        gap: scale(10),
+        marginVertical: verticalScale(6),
         backgroundColor: '#F0F9FF',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingVertical: verticalScale(12),
+        paddingHorizontal: scale(20),
         borderRadius: 12,
         width: '100%',
     },
     successTime: {
-        fontSize: 18,
+        fontSize: moderateScale(18),
         fontWeight: '600',
         color: '#0369A1',
     },
     successAlarm: {
-        fontSize: 16,
+        fontSize: moderateScale(16),
         fontWeight: '600',
         color: '#0369A1',
     },
@@ -1217,18 +1241,18 @@ const styles = StyleSheet.create({
     // --- Restored Missing Styles ---
     recentItem: {
         flexDirection: 'row',
-        padding: 16,
+        padding: scale(16),
         backgroundColor: '#FAFBFC',
         borderRadius: 16,
-        marginBottom: 12,
+        marginBottom: verticalScale(12),
         alignItems: 'center',
-        gap: 16,
+        gap: scale(16),
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
     recentThumb: {
-        width: 56,
-        height: 56,
+        width: scale(56),
+        height: scale(56),
         borderRadius: 12,
         backgroundColor: '#E2E8F0',
     },
@@ -1237,32 +1261,32 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     recentName: {
-        fontSize: 16,
+        fontSize: moderateScale(16),
         fontWeight: '600',
         color: '#0F172A',
         marginBottom: 4,
     },
     recentTime: {
-        fontSize: 12,
+        fontSize: moderateScale(12),
         color: '#64748B',
     },
 
     // Empty States & Sheets
-    emptyState: { alignItems: 'center', padding: 40, opacity: 0.6 },
-    emptyText: { marginTop: 16, fontSize: 16, color: '#64748B' },
+    emptyState: { alignItems: 'center', padding: scale(40), opacity: 0.6 },
+    emptyText: { marginTop: verticalScale(16), fontSize: moderateScale(16), color: '#64748B' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%', paddingBottom: 40 },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-    sheetTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+    bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%', paddingBottom: verticalScale(40) },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: scale(20), borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+    sheetTitle: { fontSize: moderateScale(18), fontWeight: '700', color: '#0F172A' },
     closeIconBtn: { padding: 4 },
-    recentList: { padding: 20 },
+    recentList: { padding: scale(20) },
 
     // Permissions
-    permContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#000' },
-    permTitle: { fontSize: 20, fontWeight: '700', color: '#FFF', marginBottom: 12 },
-    permDesc: { fontSize: 16, color: '#CBD5E1', textAlign: 'center', marginBottom: 24 },
-    permBtn: { backgroundColor: '#0369A1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-    permBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+    permContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: scale(20), backgroundColor: '#000' },
+    permTitle: { fontSize: moderateScale(20), fontWeight: '700', color: '#FFF', marginBottom: verticalScale(12) },
+    permDesc: { fontSize: moderateScale(16), color: '#CBD5E1', textAlign: 'center', marginBottom: verticalScale(24) },
+    permBtn: { backgroundColor: '#0369A1', paddingHorizontal: scale(24), paddingVertical: verticalScale(12), borderRadius: 12 },
+    permBtnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '600' },
 
     // Results / Analysis Styles
     bottomSheetContainer: {
@@ -1281,32 +1305,32 @@ const styles = StyleSheet.create({
         elevation: 20,
     },
     bottomSheetContent: { flex: 1 },
-    dragHandle: { width: 40, height: 4, backgroundColor: '#CBD5E1', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
-    resultsScroll: { padding: 20, paddingBottom: 100 },
+    dragHandle: { width: 40, height: 4, backgroundColor: '#CBD5E1', borderRadius: 2, alignSelf: 'center', marginTop: verticalScale(12), marginBottom: verticalScale(8) },
+    resultsScroll: { padding: scale(20), paddingBottom: verticalScale(100) },
 
     // Error State
-    errorTitle: { fontSize: 18, fontWeight: '700', color: '#EF4444', marginBottom: 8 },
-    errorDesc: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 16 },
-    primaryBtn: { backgroundColor: '#0369A1', paddingVertical: 14, borderRadius: 14, alignItems: 'center', width: '100%' },
-    primaryBtnText: { fontSize: 16, fontWeight: '600', color: '#FFF' },
+    errorTitle: { fontSize: moderateScale(18), fontWeight: '700', color: '#EF4444', marginBottom: verticalScale(8) },
+    errorDesc: { fontSize: moderateScale(14), color: '#64748B', textAlign: 'center', marginBottom: verticalScale(16) },
+    primaryBtn: { backgroundColor: '#0369A1', paddingVertical: verticalScale(14), borderRadius: 14, alignItems: 'center', width: '100%' },
+    primaryBtnText: { fontSize: moderateScale(16), fontWeight: '600', color: '#FFF' },
 
 
 
     // Alerts
-    alertBanner: { padding: 16, borderRadius: 16, marginBottom: 16, gap: 8 },
+    alertBanner: { padding: scale(16), borderRadius: 16, marginBottom: verticalScale(16), gap: 8 },
     alertHigh: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
     alertMedium: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A' },
     alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    alertTitle: { fontSize: 16, fontWeight: '700', color: '#991B1B' },
-    alertDesc: { fontSize: 14, color: '#B91C1C', lineHeight: 20 },
+    alertTitle: { fontSize: moderateScale(16), fontWeight: '700', color: '#991B1B' },
+    alertDesc: { fontSize: moderateScale(14), color: '#B91C1C', lineHeight: 20 },
 
     // Medication Card
     // Medication Card (Premium)
     medCard: {
         backgroundColor: '#FFF',
         borderRadius: 24,
-        padding: 24,
-        marginBottom: 20,
+        padding: scale(24),
+        marginBottom: verticalScale(20),
         shadowColor: '#64748B',
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.08,
@@ -1315,48 +1339,48 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F1F5F9'
     },
-    medCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-    medCardTitle: { fontSize: 24, fontWeight: '800', color: '#1E293B', flex: 1, marginRight: 10, letterSpacing: -0.5 },
-    medCardBody: { gap: 16 },
+    medCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: verticalScale(16) },
+    medCardTitle: { fontSize: moderateScale(24), fontWeight: '800', color: '#1E293B', flex: 1, marginRight: 10, letterSpacing: -0.5 },
+    medCardBody: { gap: verticalScale(16) },
 
     // Fraud Badge
-    fraudBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
-    fraudBadgeText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
+    fraudBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', paddingHorizontal: scale(10), paddingVertical: verticalScale(4), borderRadius: 8, alignSelf: 'flex-start' },
+    fraudBadgeText: { fontSize: moderateScale(12), fontWeight: '700', color: '#EF4444' },
 
     // Info Rows (Refined)
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
     infoBlock: { flex: 1 },
-    infoLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
-    infoVal: { fontSize: 17, color: '#0F172A', fontWeight: '600', lineHeight: 24 },
+    infoLabel: { fontSize: moderateScale(11), fontWeight: '700', color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
+    infoVal: { fontSize: moderateScale(17), color: '#0F172A', fontWeight: '600', lineHeight: 24 },
 
     // Section Styling (Restored)
-    sectionHeader: { fontSize: 13, fontWeight: '700', color: '#64748B', marginTop: 16, marginBottom: 8, letterSpacing: 0.5 },
-    bodyText: { fontSize: 15, color: '#334155', lineHeight: 24 },
+    sectionHeader: { fontSize: moderateScale(13), fontWeight: '700', color: '#64748B', marginTop: verticalScale(16), marginBottom: verticalScale(8), letterSpacing: 0.5 },
+    bodyText: { fontSize: moderateScale(15), color: '#334155', lineHeight: 24 },
 
     // Clean Patient ID Card
     patientIdCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
+        padding: scale(16),
         backgroundColor: '#F8FAFC',
         borderRadius: 20,
-        marginBottom: 20, // Separation from next section
+        marginBottom: verticalScale(20), // Separation from next section
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
     patientAvatarContainer: {
-        width: 48,
-        height: 48,
+        width: scale(48),
+        height: scale(48),
         borderRadius: 24,
         backgroundColor: '#CBD5E1',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginRight: scale(16),
     },
     patientDetails: { flex: 1 },
-    patientNameLarge: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+    patientNameLarge: { fontSize: moderateScale(18), fontWeight: '700', color: '#1E293B', marginBottom: 4 },
     patientSubDetails: { flexDirection: 'row', alignItems: 'center' },
-    patientMeta: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+    patientMeta: { fontSize: moderateScale(14), color: '#64748B', fontWeight: '500' },
     metaDivider: {
         width: 4,
         height: 4,
@@ -1365,30 +1389,28 @@ const styles = StyleSheet.create({
         marginHorizontal: 8,
     },
 
-
-
     // Clean Warnings
     warningCardClean: {
         backgroundColor: '#FFF',
         borderLeftWidth: 4,
         borderLeftColor: '#EF4444',
-        padding: 16,
-        marginBottom: 20,
+        padding: scale(16),
+        marginBottom: verticalScale(20),
         borderRadius: 8, // Softer styling
         shadowColor: '#000',
         shadowOpacity: 0.05,
         shadowRadius: 4,
         elevation: 2
     },
-    warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-    warningTitleClean: { fontSize: 16, fontWeight: '700', color: '#B91C1C' },
-    warningTextClean: { fontSize: 14, color: '#334155', lineHeight: 22, marginTop: 4 },
+    warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: verticalScale(8) },
+    warningTitleClean: { fontSize: moderateScale(16), fontWeight: '700', color: '#B91C1C' },
+    warningTextClean: { fontSize: moderateScale(14), color: '#334155', lineHeight: 22, marginTop: 4 },
 
     // Clean Food Section
-    foodSectionClean: { marginBottom: 20 },
-    sectionHeaderLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginBottom: 12, letterSpacing: 1 },
-    foodItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    foodItemText: { fontSize: 15, color: '#334155' },
+    foodSectionClean: { marginBottom: verticalScale(20) },
+    sectionHeaderLabel: { fontSize: moderateScale(12), fontWeight: '700', color: '#94A3B8', marginBottom: verticalScale(12), letterSpacing: 1 },
+    foodItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: verticalScale(8), borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    foodItemText: { fontSize: moderateScale(15), color: '#334155' },
 
     // Deprecated styles (kept empty to avoid breaks if referenced elsewhere, though mostly replaced)
     patientInfo: {},
@@ -1406,44 +1428,44 @@ const styles = StyleSheet.create({
 
 
     // Affordability
-    affordabilitySection: { marginTop: 24, padding: 20, backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-    savingsCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    savingsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    savingsTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-    genericName: { fontSize: 18, fontWeight: '700', color: '#0369A1', marginBottom: 4 },
-    savingsAmount: { fontSize: 14, color: '#10B981', fontWeight: '600', marginBottom: 8 },
-    pharmacyHint: { fontSize: 13, color: '#64748B' },
+    affordabilitySection: { marginTop: verticalScale(24), padding: scale(20), backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    savingsCard: { backgroundColor: '#FFF', borderRadius: 16, padding: scale(20), marginBottom: verticalScale(16), borderWidth: 1, borderColor: '#E2E8F0' },
+    savingsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: verticalScale(12) },
+    savingsTitle: { fontSize: moderateScale(16), fontWeight: '700', color: '#0F172A' },
+    genericName: { fontSize: moderateScale(18), fontWeight: '700', color: '#0369A1', marginBottom: 4 },
+    savingsAmount: { fontSize: moderateScale(14), color: '#10B981', fontWeight: '600', marginBottom: 8 },
+    pharmacyHint: { fontSize: moderateScale(13), color: '#64748B' },
 
     seniorDiscountCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 8,
-        paddingRight: 16,
+        padding: scale(8),
+        paddingRight: scale(16),
         backgroundColor: '#F3E8FF',
         borderRadius: 100,
         borderWidth: 1,
         borderColor: '#E9D5FF',
-        marginBottom: 16,
+        marginBottom: verticalScale(16),
         gap: 12,
         alignSelf: 'flex-start'
     },
     seniorDiscountBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: scale(12),
+        paddingVertical: verticalScale(6),
         backgroundColor: '#7C3AED',
         borderRadius: 100,
         gap: 6
     },
     seniorDiscountBadgeText: {
         color: '#FFF',
-        fontSize: 11,
+        fontSize: moderateScale(11),
         fontWeight: '800',
         letterSpacing: 0.5
     },
     seniorDiscountText: {
-        fontSize: 13,
+        fontSize: moderateScale(13),
         color: '#6B21A8',
         fontWeight: '700',
         flex: 1
@@ -1451,24 +1473,24 @@ const styles = StyleSheet.create({
     seniorDiscountHeader: {}, // Deprecated
     seniorDiscountTitle: {}, // Deprecated
 
-    govAssistCard: { padding: 16, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' },
-    govAssistHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    govAssistTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-    govAssistBody: { gap: 8 },
+    govAssistCard: { padding: scale(16), backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+    govAssistHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: verticalScale(12) },
+    govAssistTitle: { fontSize: moderateScale(15), fontWeight: '700', color: '#0F172A' },
+    govAssistBody: { gap: verticalScale(8) },
     govAssistItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    govAssistContact: { fontSize: 13, fontWeight: '600', color: '#0369A1' },
+    govAssistContact: { fontSize: moderateScale(13), fontWeight: '600', color: '#0369A1' },
 
-    philhealthCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 12 },
-    philhealthText: { fontSize: 13, color: '#64748B', flex: 1 },
+    philhealthCard: { flexDirection: 'row', alignItems: 'center', padding: scale(16), backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 12 },
+    philhealthText: { fontSize: moderateScale(13), color: '#64748B', flex: 1 },
 
     // Action Buttons
-    actionRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
-    primaryBtnRow: { flex: 1, backgroundColor: '#0369A1', paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-    secondaryBtnFull: { width: '100%', paddingVertical: 14, borderRadius: 14, alignItems: 'center', backgroundColor: '#F1F5F9', marginTop: 12 },
-    secondaryBtnText: { fontSize: 15, fontWeight: '600', color: '#475569' },
+    actionRow: { flexDirection: 'row', gap: scale(12), marginTop: verticalScale(12) },
+    primaryBtnRow: { flex: 1, backgroundColor: '#0369A1', paddingVertical: verticalScale(14), borderRadius: 14, alignItems: 'center' },
+    secondaryBtnFull: { width: '100%', paddingVertical: verticalScale(14), borderRadius: 14, alignItems: 'center', backgroundColor: '#F1F5F9', marginTop: verticalScale(12) },
+    secondaryBtnText: { fontSize: moderateScale(15), fontWeight: '600', color: '#475569' },
 
     // Controls
-    shutterOuter: { width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+    shutterOuter: { width: scale(84), height: scale(84), borderRadius: scale(42), borderWidth: 4, borderColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
 });
 
 

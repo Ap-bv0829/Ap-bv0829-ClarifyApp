@@ -141,7 +141,7 @@ export async function analyzeInteractions(medicines: MedicineAnalysis[]): Promis
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
         const medNames = medicines.map(m => `${m.medicineName} (${m.activeIngredients})`).join(', ');
 
@@ -187,7 +187,7 @@ export async function analyzeMedicineImage(imageUri: string): Promise<MedicineAn
         });
 
         // Initialize the Gemini model
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
         // Create the prompt for medicine identification
         const prompt = `You are a medical assistant AI specialized in helping Filipino seniors. Analyze this image of medicine/medication.
@@ -336,7 +336,7 @@ export interface PersonInfo {
  */
 export async function extractPersonInfo(transcript: string): Promise<PersonInfo> {
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
         const prompt = `Extract person information from this voice note. Return ONLY a JSON object with these fields:
 - name: The person's name (first name, or full name if given)

@@ -853,7 +853,8 @@ export default function Scanner() {
                 </View >
             ) : (
                 // Mode 2: Camera Viewfinder
-                <CameraView ref={cameraRef} style={styles.camera} facing="back">
+                <View style={styles.camera}>
+                    <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
                     {/* Controls Overlay */}
                     <SafeAreaView style={styles.overlayContainer}>
                         {/* Top Bar - No Back Arrow as requested, just empty or flash controls if we added them */}
@@ -882,7 +883,7 @@ export default function Scanner() {
                             </View>
                         </View>
                     </SafeAreaView>
-                </CameraView>
+                </View>
             )}
 
             {/* --- GLOBAL MODALS (Always at root) --- */}

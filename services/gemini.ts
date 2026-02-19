@@ -87,8 +87,8 @@ function calculateAuthenticityScore(medicine: any): any {
 // ========== END FRAUD DETECTION ==========
 
 // Initialize Gemini API
-const API_KEY = 'AIzaSyDr3Te0B4cwAg8C8WI4AvVB866pdjEjqGg';
-const genAI = new GoogleGenerativeAI(API_KEY);
+const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(API_KEY || '');
 
 export interface MedicineAnalysis {
     medicineName: string;
@@ -186,7 +186,7 @@ export async function analyzeMedicineImage(imageUri: string): Promise<MedicineAn
             encoding: 'base64',
         });
 
-        // Initialize the Gemini model (using Gemini 2.0 Flash)
+        // Initialize the Gemini model
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         // Create the prompt for medicine identification
@@ -228,6 +228,8 @@ If you cannot clearly identify the medicine, state that in the fields or provide
 Do NOT use Markdown code blocks. Just return the raw JSON ARRAY string.`;
 
         // Send the image and prompt to Gemini
+        console.log(`Sending to Gemini... Payload size: ${(base64Image.length / 1024 / 1024).toFixed(2)} MB`);
+        const startTime = Date.now();
         const result = await model.generateContent([
             prompt,
             {

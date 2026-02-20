@@ -382,3 +382,113 @@ Respond with ONLY valid JSON, no markdown, no explanation. Example:
         };
     }
 }
+
+/**
+ * Translates text into the specified language/dialect using Gemini AI.
+ * @param text - The source text to translate (typically in English)
+ * @param targetLanguage - Natural language name, e.g. "Filipino/Tagalog", "Cebuano/Bisaya dialect"
+ * @returns Translated string, or original text if translation fails
+ */
+export async function translateText(text: string, targetLanguage: string): Promise<string> {
+    if (targetLanguage.toLowerCase().startsWith('english')) return text;
+
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+        const prompt = `Translate the following medical information text into ${targetLanguage}. 
+Keep it natural and easy to understand, especially for elderly people.
+Return ONLY the translated text with no extra explanation, no quotes, no markdown.
+
+Text to translate:
+${text}`;
+
+        const result = await model.generateContent(prompt);
+        const translated = result.response.text().trim();
+        return translated || text;
+    } catch (error) {
+        console.error('Translation failed:', error);
+        return text;
+    }
+}
+
+/**
+ * Translates all medicines in a single Gemini call to avoid rate limit bursting.
+ * @param medicines - Array of medicine data to translate
+ * @param targetLanguage - The target language/dialect name
+ * @returns Array with translated fields per medicine (same order as input)
+ */
+/**
+ * Retries an async function up to maxRetries times with exponential backoff on 429 errors.
+ */
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delayMs = 5000): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (err: any) {
+            const is429 = err?.message?.includes('429') || err?.status === 429;
+            if (is429 && attempt < maxRetries) {
+                const wait = delayMs * (attempt + 1); // 5s, 10s, 15s
+                console.warn(`Gemini 429 – retrying in ${wait / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
+                await new Promise(res => setTimeout(res, wait));
+            } else {
+                throw err;
+            }
+        }
+    }
+    throw new Error('Max retries exceeded');
+}
+
+export async function translateBatch(
+    medicines: Array<{ medicineName: string; commonUses: string; warnings: string | string[] }>,
+    targetLanguage: string
+): Promise<Array<{ name: string; purpose: string; warnings: string }>> {
+    const fallback = medicines.map(m => ({
+        name: m.medicineName,
+        purpose: m.commonUses,
+        warnings: Array.isArray(m.warnings) ? m.warnings.join('. ') : m.warnings,
+    }));
+
+    if (targetLanguage.toLowerCase().startsWith('english')) return fallback;
+
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+        const payload = medicines.map((m, i) => ({
+            id: i,
+            name: m.medicineName,
+            purpose: m.commonUses,
+            warnings: Array.isArray(m.warnings) ? m.warnings.join('. ') : m.warnings,
+        }));
+
+        // IMPORTANT: The prompt explicitly instructs Gemini to keep JSON keys in English,
+        // only translating the string VALUES. Without this, Gemini translates keys too,
+        // which breaks parsing and silently falls back to English.
+        const prompt = `You are a medical translator. Translate only the STRING VALUES (not the keys) in the JSON array below into ${targetLanguage}.
+RULES:
+- Keep all JSON keys exactly as-is in English: "id", "name", "purpose", "warnings"
+- The "id" field must remain an integer (do not translate it)
+- Translate ONLY the values of "name", "purpose", and "warnings"
+- Use natural, simple language suitable for elderly people
+- Return ONLY the completed JSON array — no markdown, no code fences, no explanation
+
+Input JSON:
+${JSON.stringify(payload, null, 2)}`;
+
+        const result = await withRetry(() => model.generateContent(prompt));
+        const raw = result.response.text().trim()
+            .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        const parsed: Array<{ id: number; name: string; purpose: string; warnings: string }> = JSON.parse(raw);
+
+        return medicines.map((_, i) => {
+            const found = parsed.find(p => p.id === i);
+            if (found && found.name && found.purpose) {
+                return { name: found.name, purpose: found.purpose, warnings: found.warnings || fallback[i].warnings };
+            }
+            return fallback[i];
+        });
+    } catch (error) {
+        console.error('Batch translation failed for', targetLanguage, ':', error);
+        return fallback;
+    }
+}

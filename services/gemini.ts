@@ -141,7 +141,7 @@ export async function analyzeInteractions(medicines: MedicineAnalysis[]): Promis
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const medNames = medicines.map(m => `${m.medicineName} (${m.activeIngredients})`).join(', ');
 
@@ -187,7 +187,7 @@ export async function analyzeMedicineImage(imageUri: string): Promise<MedicineAn
         });
 
         // Initialize the Gemini model
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         // Create the prompt for medicine identification
         const prompt = `You are a medical assistant AI specialized in helping Filipino seniors. Analyze this image of medicine/medication.
@@ -260,7 +260,13 @@ Do NOT use Markdown code blocks. Just return the raw JSON ARRAY string.`;
 function parseMedicineResponse(text: string): MedicineAnalysis[] {
     try {
         // Clean the text to ensure it's valid JSON
-        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        // Gemini 2.5 sometimes adds parenthetical comments after JSON values
+        // e.g.  ["Alcohol"] (Can worsen dizziness...)  or  "value" (some note)
+        // Strip trailing (...) that appear after a JSON value token (], }, ", true, false, null, number)
+        cleanText = cleanText.replace(/(\]|"true"|"false"|"null"|"|\d)\s*\((?:[^)(]*|\([^)(]*\))*\)/g, '$1');
+
         const parsed = JSON.parse(cleanText);
 
         const results: MedicineAnalysis[] = [];
@@ -336,7 +342,7 @@ export interface PersonInfo {
  */
 export async function extractPersonInfo(transcript: string): Promise<PersonInfo> {
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const prompt = `Extract person information from this voice note. Return ONLY a JSON object with these fields:
 - name: The person's name (first name, or full name if given)
@@ -393,7 +399,7 @@ export async function translateText(text: string, targetLanguage: string): Promi
     if (targetLanguage.toLowerCase().startsWith('english')) return text;
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const prompt = `Translate the following medical information text into ${targetLanguage}. 
 Keep it natural and easy to understand, especially for elderly people.
@@ -451,7 +457,7 @@ export async function translateBatch(
     if (targetLanguage.toLowerCase().startsWith('english')) return fallback;
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const payload = medicines.map((m, i) => ({
             id: i,

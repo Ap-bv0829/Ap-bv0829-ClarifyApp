@@ -1,7 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import Animated, {
+    FadeInDown,
+    FadeInUp,
+} from 'react-native-reanimated';
 import {
     DailySchedule,
     findDuplicateMedications,
@@ -12,12 +28,11 @@ import {
     updateMedicationStatus
 } from '../services/medicationStorage';
 
-const { width } = Dimensions.get('window');
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function MedicationsScreen() {
     const router = useRouter();
 
-    // State
     const [medications, setMedications] = useState<MedicationRecord[]>([]);
     const [todaySchedule, setTodaySchedule] = useState<DailySchedule[]>([]);
     const [duplicates, setDuplicates] = useState<Array<{ ingredient: string; medications: MedicationRecord[] }>>([]);
@@ -25,7 +40,6 @@ export default function MedicationsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [expandedMedId, setExpandedMedId] = useState<string | null>(null);
 
-    // Load data on mount
     useEffect(() => {
         loadData();
     }, []);
@@ -58,7 +72,7 @@ export default function MedicationsScreen() {
     const handleMarkTaken = async (medicationId: string) => {
         try {
             await markMedicationTaken(medicationId);
-            await loadData(); // Reload to update checkmarks
+            await loadData();
         } catch (error) {
             Alert.alert('Error', 'Failed to mark as taken');
         }
@@ -90,104 +104,135 @@ export default function MedicationsScreen() {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#007AFF" />
+                    <View style={styles.loadingIconWrap}>
+                        <ActivityIndicator size="large" color="#0369A1" />
+                    </View>
                     <Text style={styles.loadingText}>Loading medications...</Text>
                 </View>
             </SafeAreaView>
         );
     }
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
-                <View>
-                    <Text style={styles.headerTitle}>My Medications</Text>
-                    <Text style={styles.headerSubtitle}>{medications.length} Active Medicine{medications.length !== 1 ? 's' : ''}</Text>
+    const Header = (
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <View style={styles.backBtnCircle}>
+                    <Ionicons name="arrow-back" size={20} color="#0F172A" />
                 </View>
-                <TouchableOpacity onPress={() => router.push('/scanner')} style={styles.addButton}>
-                    <Ionicons name="add-circle" size={28} color="#007AFF" />
-                </TouchableOpacity>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.headerTitle}>My Medications</Text>
+                <Text style={styles.headerSubtitle}>
+                    {medications.length} Active Medicine{medications.length !== 1 ? 's' : ''}
+                </Text>
             </View>
+            <TouchableOpacity onPress={() => router.push('/scanner')} style={styles.addButton}>
+                <View style={styles.addBtnCircle}>
+                    <Ionicons name="add" size={22} color="#FFF" />
+                </View>
+            </TouchableOpacity>
+        </Animated.View>
+    );
+
+    const Content = (
+        <>
+            <StatusBar barStyle="dark-content" />
 
             <ScrollView
                 style={styles.scrollView}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#0369A1" />}
             >
                 {/* Duplicates Warning */}
                 {duplicates.length > 0 && (
-                    <View style={styles.warningBanner}>
-                        <Ionicons name="warning" size={20} color="#DC2626" />
+                    <Animated.View entering={FadeInDown.duration(400).delay(100)} style={styles.warningBanner}>
+                        <View style={styles.warningIconWrap}>
+                            <Ionicons name="warning" size={18} color="#DC2626" />
+                        </View>
                         <Text style={styles.warningText}>
                             {duplicates.length} duplicate medication{duplicates.length > 1 ? 's' : ''} detected
                         </Text>
-                    </View>
+                    </Animated.View>
                 )}
 
                 {/* Today's Schedule */}
                 {todaySchedule.length > 0 && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>TODAY'S SCHEDULE</Text>
+                    <Animated.View entering={FadeInUp.duration(500).delay(200)} style={styles.section}>
+                        <View style={styles.sectionTitleRow}>
+                            <Ionicons name="calendar-outline" size={16} color="#64748B" />
+                            <Text style={styles.sectionTitle}>TODAY'S SCHEDULE</Text>
+                        </View>
                         {todaySchedule.map((item, index) => (
-                            <TouchableOpacity
+                            <AnimatedTouchable
                                 key={index}
-                                style={styles.scheduleItem}
+                                entering={FadeInUp.duration(400).delay(250 + index * 80)}
+                                style={[styles.scheduleItem, item.taken && styles.scheduleItemTaken]}
                                 onPress={() => !item.taken && handleMarkTaken(item.medicationId)}
+                                activeOpacity={0.85}
                             >
+                                <View style={[
+                                    styles.scheduleAccent,
+                                    { backgroundColor: item.taken ? '#10B981' : '#0369A1' }
+                                ]} />
                                 <Ionicons
                                     name={item.taken ? "checkmark-circle" : "ellipse-outline"}
-                                    size={24}
-                                    color={item.taken ? "#10B981" : "#D1D5DB"}
+                                    size={26}
+                                    color={item.taken ? "#10B981" : "#CBD5E1"}
                                 />
                                 <View style={styles.scheduleInfo}>
-                                    <Text style={styles.scheduleTime}>{item.time}</Text>
-                                    <Text style={styles.scheduleMedName}>{item.medicationName}</Text>
+                                    <Text style={[styles.scheduleTime, item.taken && { color: '#94A3B8' }]}>{item.time}</Text>
+                                    <Text style={[styles.scheduleMedName, item.taken && { color: '#94A3B8' }]}>{item.medicationName}</Text>
                                     <Text style={styles.scheduleDosage}>{item.dosage}</Text>
                                 </View>
                                 {item.taken && item.takenAt && (
-                                    <Text style={styles.takenTime}>
-                                        {new Date(item.takenAt).toLocaleTimeString('en-US', {
-                                            hour: 'numeric',
-                                            minute: '2-digit'
-                                        })}
-                                    </Text>
+                                    <View style={styles.takenBadge}>
+                                        <Ionicons name="checkmark" size={12} color="#10B981" />
+                                        <Text style={styles.takenTime}>
+                                            {new Date(item.takenAt).toLocaleTimeString('en-US', {
+                                                hour: 'numeric',
+                                                minute: '2-digit'
+                                            })}
+                                        </Text>
+                                    </View>
                                 )}
-                            </TouchableOpacity>
+                            </AnimatedTouchable>
                         ))}
-                    </View>
+                    </Animated.View>
                 )}
 
                 {/* All Medications */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ALL MEDICATIONS</Text>
+                <Animated.View entering={FadeInUp.duration(500).delay(300)} style={styles.section}>
+                    <View style={styles.sectionTitleRow}>
+                        <Ionicons name="medical-outline" size={16} color="#64748B" />
+                        <Text style={styles.sectionTitle}>ALL MEDICATIONS</Text>
+                    </View>
                     {medications.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <Ionicons name="medical-outline" size={48} color="#D1D5DB" />
+                        <Animated.View entering={FadeInUp.duration(500).delay(400)} style={styles.emptyState}>
+                            <View style={styles.emptyIconCircle}>
+                                <Ionicons name="medical-outline" size={40} color="#CBD5E1" />
+                            </View>
                             <Text style={styles.emptyText}>No medications found</Text>
                             <Text style={styles.emptySubtext}>Scan a prescription to get started</Text>
                             <TouchableOpacity
                                 style={styles.scanButton}
                                 onPress={() => router.push('/scanner')}
+                                activeOpacity={0.85}
                             >
                                 <Ionicons name="camera" size={20} color="#FFF" />
                                 <Text style={styles.scanButtonText}>Scan Medicine</Text>
                             </TouchableOpacity>
-                        </View>
+                        </Animated.View>
                     ) : (
-                        medications.map(med => {
+                        medications.map((med, index) => {
                             const isExpanded = expandedMedId === med.id;
                             const fraud = med.analysis.fraudDetection;
 
                             return (
-                                <View key={med.id} style={styles.medCard}>
+                                <Animated.View key={med.id} entering={FadeInUp.duration(400).delay(350 + index * 100)} style={styles.medCard}>
                                     <TouchableOpacity
                                         style={styles.medCardHeader}
                                         onPress={() => setExpandedMedId(isExpanded ? null : med.id)}
+                                        activeOpacity={0.85}
                                     >
                                         <Image source={{ uri: med.imageUri }} style={styles.medThumb} />
                                         <View style={styles.medCardHeaderInfo}>
@@ -198,21 +243,24 @@ export default function MedicationsScreen() {
                                                     styles.authBadge,
                                                     { backgroundColor: fraud.riskLevel === 'safe' ? '#10B981' : fraud.riskLevel === 'caution' ? '#EAB308' : fraud.riskLevel === 'suspicious' ? '#F97316' : '#EF4444' }
                                                 ]}>
+                                                    <View style={styles.authDot} />
                                                     <Text style={styles.authBadgeText}>
                                                         {fraud.authenticityScore}% {fraud.riskLevel.toUpperCase()}
                                                     </Text>
                                                 </View>
                                             )}
                                         </View>
-                                        <Ionicons
-                                            name={isExpanded ? "chevron-up" : "chevron-down"}
-                                            size={20}
-                                            color="#8E8E93"
-                                        />
+                                        <View style={styles.chevronWrap}>
+                                            <Ionicons
+                                                name={isExpanded ? "chevron-up" : "chevron-down"}
+                                                size={18}
+                                                color="#94A3B8"
+                                            />
+                                        </View>
                                     </TouchableOpacity>
 
                                     {isExpanded && (
-                                        <View style={styles.medCardBody}>
+                                        <Animated.View entering={FadeInDown.duration(300)} style={styles.medCardBody}>
                                             <Text style={styles.bodyLabel}>Active Ingredients</Text>
                                             <Text style={styles.bodyText}>{med.analysis.activeIngredients}</Text>
 
@@ -244,20 +292,29 @@ export default function MedicationsScreen() {
                                             <TouchableOpacity
                                                 style={styles.discontinueButton}
                                                 onPress={() => handleDiscontinue(med.id)}
+                                                activeOpacity={0.8}
                                             >
                                                 <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
                                                 <Text style={styles.discontinueText}>Discontinue</Text>
                                             </TouchableOpacity>
-                                        </View>
+                                        </Animated.View>
                                     )}
-                                </View>
+                                </Animated.View>
                             );
                         })
                     )}
-                </View>
+                </Animated.View>
 
                 <View style={{ height: 40 }} />
             </ScrollView>
+        </>
+    );
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" />
+            {Header}
+            {Content}
         </SafeAreaView>
     );
 }
@@ -265,43 +322,71 @@ export default function MedicationsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#FFFFFF',
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        gap: 16,
+    },
+    loadingIconWrap: {
+        width: 64,
+        height: 64,
+        borderRadius: 22,
+        backgroundColor: '#EFF6FF',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     loadingText: {
-        marginTop: 12,
-        fontSize: 16,
-        color: '#6B7280',
+        fontSize: 15,
+        color: '#64748B',
+        fontWeight: '500',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingTop: 32,
+        paddingBottom: 20,
         backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomWidth: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
+        gap: 12,
     },
-    backButton: {
-        padding: 8,
+    backButton: {},
+    backBtnCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     headerTitle: {
         fontSize: 20,
-        fontWeight: '700',
-        color: '#000',
+        fontWeight: '800',
+        color: '#0F172A',
+        letterSpacing: -0.3,
     },
     headerSubtitle: {
         fontSize: 13,
-        color: '#6B7280',
+        color: '#64748B',
         marginTop: 2,
+        fontWeight: '500',
     },
-    addButton: {
-        padding: 4,
+    addButton: {},
+    addBtnCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        backgroundColor: '#0369A1',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     scrollView: {
         flex: 1,
@@ -310,11 +395,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FEF2F2',
-        padding: 12,
+        padding: 14,
         marginHorizontal: 16,
         marginTop: 16,
-        borderRadius: 8,
-        gap: 8,
+        borderRadius: 14,
+        gap: 12,
+        borderWidth: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    warningIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: '#FEE2E2',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     warningText: {
         flex: 1,
@@ -323,95 +422,159 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     section: {
-        marginTop: 24,
+        marginTop: 32,
         paddingHorizontal: 16,
     },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+    },
     sectionTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#6B7280',
-        letterSpacing: 0.5,
-        marginBottom: 12,
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#0369A1',
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
     },
     scheduleItem: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFF',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 8,
+        padding: 14,
+        borderRadius: 14,
+        marginBottom: 10,
         gap: 12,
+        borderWidth: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 1,
+        overflow: 'hidden',
+    },
+    scheduleItemTaken: {
+        backgroundColor: '#FAFBFC',
+        borderColor: '#E2E8F0',
+    },
+    scheduleAccent: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 4,
+        borderTopLeftRadius: 16,
+        borderBottomLeftRadius: 16,
     },
     scheduleInfo: {
         flex: 1,
     },
     scheduleTime: {
         fontSize: 16,
-        fontWeight: '700',
-        color: '#000',
+        fontWeight: '800',
+        color: '#0F172A',
     },
     scheduleMedName: {
-        fontSize: 15,
+        fontSize: 14,
         color: '#374151',
-        marginTop: 2,
+        marginTop: 4,
+        fontWeight: '600',
     },
     scheduleDosage: {
-        fontSize: 13,
-        color: '#6B7280',
-        marginTop: 1,
+        fontSize: 12,
+        color: '#94A3B8',
+        marginTop: 2,
+        fontWeight: '500',
+    },
+    takenBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F0FDF4',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
     },
     takenTime: {
-        fontSize: 12,
-        color: '#10B981',
-        fontWeight: '600',
+        fontSize: 11,
+        color: '#059669',
+        fontWeight: '800',
     },
     emptyState: {
         alignItems: 'center',
         paddingVertical: 48,
+        gap: 8,
+    },
+    emptyIconCircle: {
+        width: 80,
+        height: 80,
+        borderRadius: 32,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+        shadowColor: '#94A3B8',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
     },
     emptyText: {
         fontSize: 18,
-        fontWeight: '600',
-        color: '#9CA3AF',
-        marginTop: 16,
+        fontWeight: '700',
+        color: '#94A3B8',
     },
     emptySubtext: {
         fontSize: 14,
-        color: '#D1D5DB',
-        marginTop: 4,
+        color: '#CBD5E1',
+        fontWeight: '500',
     },
     scanButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#007AFF',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 10,
-        marginTop: 24,
+        backgroundColor: '#0369A1',
+        paddingHorizontal: 24,
+        paddingVertical: 14,
+        borderRadius: 16,
+        marginTop: 20,
         gap: 8,
+        shadowColor: '#0369A1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     scanButtonText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#FFF',
     },
     medCard: {
         backgroundColor: '#FFF',
-        borderRadius: 12,
-        marginBottom: 12,
+        borderRadius: 14,
+        marginBottom: 10,
         overflow: 'hidden',
+        borderWidth: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 1,
     },
     medCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        gap: 12,
+        gap: 14,
     },
     medThumb: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
-        backgroundColor: '#E5E7EB',
+        width: 56,
+        height: 56,
+        borderRadius: 14,
+        backgroundColor: '#F1F5F9',
     },
     medCardHeaderInfo: {
         flex: 1,
@@ -419,19 +582,28 @@ const styles = StyleSheet.create({
     medName: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#000',
+        color: '#0F172A',
     },
     medDosage: {
-        fontSize: 14,
-        color: '#6B7280',
+        fontSize: 13,
+        color: '#64748B',
         marginTop: 2,
     },
     authBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
         alignSelf: 'flex-start',
         paddingHorizontal: 8,
         paddingVertical: 3,
-        borderRadius: 4,
+        borderRadius: 20,
         marginTop: 6,
+        gap: 4,
+    },
+    authDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: '#FFF',
     },
     authBadgeText: {
         fontSize: 10,
@@ -439,24 +611,34 @@ const styles = StyleSheet.create({
         color: '#FFF',
         letterSpacing: 0.5,
     },
+    chevronWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: '#F8FAFC',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     medCardBody: {
-        padding: 16,
-        paddingTop: 0,
+        padding: 18,
+        paddingTop: 16,
         borderTopWidth: 1,
         borderTopColor: '#F3F4F6',
     },
     bodyLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#6B7280',
-        marginTop: 12,
-        marginBottom: 4,
-        letterSpacing: 0.5,
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#0369A1',
+        marginTop: 16,
+        marginBottom: 6,
+        letterSpacing: 1.2,
+        textTransform: 'uppercase',
     },
     bodyText: {
         fontSize: 14,
         color: '#374151',
-        lineHeight: 20,
+        lineHeight: 22,
+        fontWeight: '500',
     },
     bodyTextSmall: {
         fontSize: 13,
@@ -469,9 +651,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#FEF2F2',
         padding: 12,
-        borderRadius: 8,
+        borderRadius: 12,
         marginTop: 16,
-        gap: 6,
+        gap: 8,
+        borderWidth: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.02,
+        shadowRadius: 3,
+        elevation: 1,
     },
     discontinueText: {
         fontSize: 14,

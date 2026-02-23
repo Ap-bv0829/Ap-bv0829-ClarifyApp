@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 
 // ========== FRAUD DETECTION UTILITIES ==========
 function validatePRCLicense(licenseNumber?: string): boolean {
@@ -175,16 +176,45 @@ Start with "⚠️ WARNING:" in description if high risk.`;
 }
 
 /**
+ * Converts a URI (local file or blob) to a Base64 string.
+ * Works on both native and web.
+ */
+async function uriToBase64(uri: string): Promise<string> {
+    if (Platform.OS === 'web') {
+        try {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64data = reader.result as string;
+                    // Remove the data URL prefix (e.g. "data:image/jpeg;base64,") if present
+                    const base64 = base64data.includes(',') ? base64data.split(',')[1] : base64data;
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('Error converting URI to base64 on web:', error);
+            throw error;
+        }
+    } else {
+        return await FileSystem.readAsStringAsync(uri, {
+            encoding: 'base64',
+        });
+    }
+}
+
+/**
  * Analyzes an image of medicine using Google Gemini Vision API
  * @param imageUri - Local file URI of the captured image
  * @returns Array of structured information about the identified medicines
  */
 export async function analyzeMedicineImage(imageUri: string): Promise<MedicineAnalysis[]> {
     try {
-        // Read the image file as base64
-        const base64Image = await FileSystem.readAsStringAsync(imageUri, {
-            encoding: 'base64',
-        });
+        // Read the image file as base64 - Cross-platform helper
+        const base64Image = await uriToBase64(imageUri);
 
         // Initialize the Gemini model
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -495,6 +525,48 @@ ${JSON.stringify(payload, null, 2)}`;
         });
     } catch (error) {
         console.error('Batch translation failed for', targetLanguage, ':', error);
+        return fallback;
+    }
+}
+
+// ─── PhilHealth & Senior Discount Info ───────────────────────────────────────
+
+export interface PhilHealthInfo {
+    isPhilHealthCovered: boolean;
+    coverageDetails: string;
+    seniorDiscountEligible: boolean;
+    discountNote: string;
+    estimatedPrice: string;
+    genericAlternative: string;
+    programsAvailable: string[];
+}
+
+export async function getPhilHealthInfo(medicineName: string): Promise<PhilHealthInfo> {
+    const fallback: PhilHealthInfo = {
+        isPhilHealthCovered: false,
+        coverageDetails: 'Unable to determine coverage',
+        seniorDiscountEligible: true,
+        discountNote: '20% discount for senior citizens under RA 9994',
+        estimatedPrice: 'Price varies by pharmacy',
+        genericAlternative: 'Ask your pharmacist for a generic alternative',
+        programsAvailable: ['PCSO Medical Assistance', 'Malasakit Center'],
+    };
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const prompt = `You are a Philippine healthcare assistant. For the medicine "${medicineName}", provide:
+1. Is it on the PhilHealth Essential Medicines List or covered by any PhilHealth package?
+2. Is it eligible for the 20% Senior Citizen Discount under RA 9994 in the Philippines?
+3. Estimated retail price in Philippine pharmacies
+4. Generic alternative available in the Philippines
+5. Government assistance programs (PCSO, Malasakit Center, DSWD AICS, etc.)
+
+Respond ONLY with JSON (no markdown, no backticks):
+{"isPhilHealthCovered":boolean,"coverageDetails":"string","seniorDiscountEligible":boolean,"discountNote":"string","estimatedPrice":"string in PHP","genericAlternative":"string","programsAvailable":["string"]}`;
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().trim().replace(/```json|```/g, '').trim();
+        return { ...fallback, ...JSON.parse(text) };
+    } catch (err) {
+        console.error('PhilHealth info error:', err);
         return fallback;
     }
 }

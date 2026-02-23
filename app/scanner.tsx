@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import Animated, { FadeInUp, FadeInDown, Easing } from 'react-native-reanimated';
 import { analyzeInteractions, analyzeMedicineImage, InteractionReport, MedicineAnalysis, translateBatch, translateText } from '../services/gemini';
 import { saveMedication } from '../services/medicationStorage';
 import { getRecentScans, SavedScan, saveScan } from '../services/storage';
@@ -1450,7 +1452,7 @@ const styles = StyleSheet.create({
     },
     bottomSheetContent: { flex: 1 },
     dragHandle: { width: 36, height: 4, backgroundColor: '#CBD5E1', borderRadius: 2, alignSelf: 'center', marginTop: verticalScale(10) },
-    resultsScroll: { paddingHorizontal: scale(16), paddingTop: verticalScale(8), paddingBottom: verticalScale(100) },
+    resultsScroll: { paddingHorizontal: scale(18), paddingTop: verticalScale(12), paddingBottom: verticalScale(120) },
 
     // Sheet Header Row
     sheetTopRow: {
@@ -1488,9 +1490,9 @@ const styles = StyleSheet.create({
     primaryBtnText: { fontSize: moderateScale(16), fontWeight: '600', color: '#FFF' },
 
     // Alerts
-    alertBanner: { flexDirection: 'column', gap: 6, padding: scale(14), borderRadius: 14, marginBottom: verticalScale(12), marginTop: verticalScale(8) },
-    alertHigh: { backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: '#FECACA' },
-    alertMedium: { backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A' },
+    alertBanner: { flexDirection: 'column', gap: 8, padding: scale(14), borderRadius: 14, marginBottom: verticalScale(14), marginTop: verticalScale(10), borderLeftWidth: 0 },
+    alertHigh: { backgroundColor: '#FEF2F2', borderLeftColor: '#DC2626', borderWidth: 0 },
+    alertMedium: { backgroundColor: '#FFFBEB', borderLeftColor: '#D97706', borderWidth: 0 },
     alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     alertTitle: { fontSize: moderateScale(14), fontWeight: '700' },
     alertDesc: { fontSize: moderateScale(13), color: '#64748B', lineHeight: 19 },
@@ -1498,16 +1500,16 @@ const styles = StyleSheet.create({
     // Medication Card
     medCard: {
         backgroundColor: '#FFF',
-        borderRadius: 20,
+        borderRadius: 16,
         padding: scale(18),
         marginTop: verticalScale(12),
-        shadowColor: '#94A3B8',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.10,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 1,
+        borderWidth: 0,
+        overflow: 'hidden',
     },
     medCardIconWrap: {
         width: scale(38),
@@ -1521,7 +1523,7 @@ const styles = StyleSheet.create({
     medCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: verticalScale(4) },
     medCardTitle: { fontSize: moderateScale(17), fontWeight: '700', color: '#0F172A', letterSpacing: -0.2 },
     medCardMeta: { flexDirection: 'row', alignItems: 'center', gap: scale(6), marginTop: verticalScale(4), flexWrap: 'wrap' },
-    medCardBody: { marginTop: verticalScale(14), gap: verticalScale(12), borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: verticalScale(14) },
+    medCardBody: { marginTop: verticalScale(18), gap: verticalScale(16), borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: verticalScale(18) },
 
     // Pills / Badges
     fraudPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: scale(8), paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
@@ -1535,24 +1537,25 @@ const styles = StyleSheet.create({
     ttsInline: { padding: 4 },
 
     // Info Chip Row
-    chipRow: { flexDirection: 'row', gap: scale(10) },
+    chipRow: { flexDirection: 'row', gap: scale(12) },
     infoChip: {
         flex: 1,
         backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        padding: scale(12),
-        gap: 3,
+        padding: scale(14),
+        gap: 5,
+        alignItems: 'center',
     },
     infoChipLabel: { fontSize: moderateScale(10), fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8 },
     infoChipVal: { fontSize: moderateScale(14), fontWeight: '600', color: '#0F172A' },
 
     // Section block
-    sectionBlock: { gap: verticalScale(4) },
-    sectionBlockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    sectionLabel: { fontSize: moderateScale(11), fontWeight: '700', color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase' },
-    bodyText: { fontSize: moderateScale(14), color: '#334155', lineHeight: 22 },
+    sectionBlock: { gap: verticalScale(6) },
+    sectionBlockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: verticalScale(2) },
+    sectionLabel: { fontSize: moderateScale(11), fontWeight: '800', color: '#0369A1', letterSpacing: 1.2, textTransform: 'uppercase' },
+    bodyText: { fontSize: moderateScale(14), color: '#334155', lineHeight: 22, fontWeight: '500' },
 
     // Compat aliases
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
@@ -1595,24 +1598,30 @@ const styles = StyleSheet.create({
 
     // Warnings
     warningCardClean: {
-        backgroundColor: '#FFF5F5',
-        borderLeftWidth: 3,
-        borderLeftColor: '#EF4444',
+        backgroundColor: '#FEF2F2',
+        borderLeftWidth: 0,
+        borderLeftColor: '#DC2626',
         padding: scale(14),
         borderRadius: 12,
-        marginTop: verticalScale(4),
+        marginTop: verticalScale(6),
+        borderWidth: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
     },
     warningIconWrap: {
-        width: scale(26),
-        height: scale(26),
-        borderRadius: scale(13),
+        width: scale(28),
+        height: scale(28),
+        borderRadius: scale(14),
         backgroundColor: '#FEE2E2',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: verticalScale(8) },
-    warningTitleClean: { fontSize: moderateScale(13), fontWeight: '700', color: '#B91C1C', flex: 1 },
-    warningTextClean: { fontSize: moderateScale(13), color: '#7F1D1D', lineHeight: 20, marginTop: 3, paddingLeft: scale(4) },
+    warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: verticalScale(10) },
+    warningTitleClean: { fontSize: moderateScale(13), fontWeight: '800', color: '#991B1B', flex: 1 },
+    warningTextClean: { fontSize: moderateScale(13), color: '#7F1D1D', lineHeight: 20, marginTop: 6, paddingLeft: scale(8), fontWeight: '500' },
 
     // Food Section
     foodSectionClean: { marginTop: verticalScale(4) },

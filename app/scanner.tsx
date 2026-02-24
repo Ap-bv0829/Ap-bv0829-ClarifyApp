@@ -1,14 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
-import Animated, { FadeInUp, FadeInDown, Easing } from 'react-native-reanimated';
 import { analyzeInteractions, analyzeMedicineImage, InteractionReport, MedicineAnalysis, translateBatch, translateText } from '../services/gemini';
+import { Language, LANGUAGES } from '../services/languages';
 import { saveMedication } from '../services/medicationStorage';
 import { getRecentScans, SavedScan, saveScan } from '../services/storage';
 
@@ -28,23 +27,7 @@ try {
 }
 
 // ─── Language List ────────────────────────────────────────────────────────────
-const LANGUAGES = [
-    { label: '🇺🇸 English', code: 'en-US', geminiName: 'English' },
-    { label: '🇵🇭 Filipino (Tagalog)', code: 'fil-PH', geminiName: 'Filipino/Tagalog' },
-    { label: '🇵🇭 Bisaya / Cebuano', code: 'fil-PH', geminiName: 'Cebuano/Bisaya dialect' },
-    { label: '🇵🇭 Ilocano', code: 'fil-PH', geminiName: 'Ilocano dialect' },
-    { label: '🇵🇭 Waray', code: 'fil-PH', geminiName: 'Waray dialect' },
-    { label: '🇵🇭 Kapampangan', code: 'fil-PH', geminiName: 'Kapampangan dialect' },
-    { label: '🇪🇸 Spanish', code: 'es-ES', geminiName: 'Spanish' },
-    { label: '🇨🇳 Chinese (Mandarin)', code: 'zh-CN', geminiName: 'Mandarin Chinese' },
-    { label: '🇯🇵 Japanese', code: 'ja-JP', geminiName: 'Japanese' },
-    { label: '🇰🇷 Korean', code: 'ko-KR', geminiName: 'Korean' },
-    { label: '🇸🇦 Arabic', code: 'ar-SA', geminiName: 'Arabic' },
-    { label: '🇫🇷 French', code: 'fr-FR', geminiName: 'French' },
-    { label: '🇩🇪 German', code: 'de-DE', geminiName: 'German' },
-    { label: '🇮🇳 Hindi', code: 'hi-IN', geminiName: 'Hindi' },
-];
-type Language = typeof LANGUAGES[number];
+// Replaced by shared service import
 
 
 // --- Helper Components ---
@@ -66,6 +49,14 @@ const RecentScansModal = ({ visible, onClose, onSelect }: RecentScansModalProps)
         }
     }, [visible]);
 
+    const getSeverityColor = (warnings?: string | null) => {
+        if (!warnings || warnings === 'None') return '#10B981';
+        const w = warnings.toLowerCase();
+        if (w.includes('severe') || w.includes('stop')) return '#DC2626';
+        if (w.includes('caution') || w.includes('avoid')) return '#F59E0B';
+        return '#3B82F6';
+    };
+
     const loadScans = async () => {
         setLoading(true);
         const data = await getRecentScans();
@@ -74,25 +65,28 @@ const RecentScansModal = ({ visible, onClose, onSelect }: RecentScansModalProps)
     };
 
     const renderItem = ({ item }: { item: SavedScan }) => {
-        const meds = item.analysis;
+        const meds = item.analysis || [];
+        const hasMeds = meds.length > 0;
+        const primaryWarning = hasMeds ? meds[0].warnings : null;
+
         const title = meds.length > 1
             ? `${meds.length} Medicines Found`
-            : meds[0].medicineName;
+            : hasMeds ? meds[0].medicineName : 'Unknown Scan';
 
         const subtitle = meds.length > 1
-            ? meds.map(m => m.medicineName).join(', ')
+            ? meds.map(m => m?.medicineName || 'Unknown').join(', ')
             : new Date(item.timestamp).toLocaleDateString();
 
         return (
             <TouchableOpacity style={styles.recentItem} onPress={() => onSelect(item)}>
-                <Image source={{ uri: item.imageUri }} style={styles.recentThumb} />
+                <View style={[styles.severityDot, { backgroundColor: getSeverityColor(primaryWarning) }]} />
                 <View style={styles.recentInfo}>
                     <Text style={styles.recentName} numberOfLines={1}>{title}</Text>
                     <Text style={styles.recentTime} numberOfLines={1}>
                         {subtitle}
                     </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+                <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
             </TouchableOpacity>
         );
     };
@@ -104,15 +98,15 @@ const RecentScansModal = ({ visible, onClose, onSelect }: RecentScansModalProps)
                     <View style={styles.sheetHeader}>
                         <Text style={styles.sheetTitle}>Recent Scans</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeIconBtn}>
-                            <Ionicons name="close-circle" size={30} color="#E5E5EA" />
+                            <Ionicons name="close-circle" size={32} color="#334155" />
                         </TouchableOpacity>
                     </View>
 
                     {loading ? (
-                        <ActivityIndicator size="large" color="#4facfe" style={{ marginTop: 40 }} />
+                        <ActivityIndicator size="large" color="#334155" style={{ marginTop: 40 }} />
                     ) : scans.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <Ionicons name="medical-outline" size={48} color="#D1D1D6" />
+                            <Ionicons name="medical-outline" size={48} color="#94A3B8" />
                             <Text style={styles.emptyText}>No scans yet</Text>
                         </View>
                     ) : (
@@ -189,7 +183,7 @@ const CustomTimePicker = ({ visible, onClose, onConfirm, medicineName }: CustomT
             <View style={styles.pickerOverlay}>
                 <View style={styles.pickerCard}>
                     <View style={styles.pickerHeaderContainer}>
-                        <Ionicons name="time" size={28} color="#0369A1" />
+                        <Ionicons name="time" size={28} color="#334155" />
                         <View style={{ flex: 1 }}>
                             <Text style={styles.pickerHeader}>Set Medication Reminder</Text>
                             {medicineName && <Text style={styles.pickerSubHeader}><Ionicons name="medical" size={14} color="#64748B" /> {medicineName}</Text>}
@@ -206,22 +200,22 @@ const CustomTimePicker = ({ visible, onClose, onConfirm, medicineName }: CustomT
                             {/* Hour */}
                             <View style={styles.timeCol}>
                                 <TouchableOpacity style={styles.chevronBtn} onPress={() => setHour(h => h === 12 ? 1 : h + 1)} activeOpacity={0.7}>
-                                    <Ionicons name="chevron-up" size={36} color="#0369A1" />
+                                    <Ionicons name="chevron-up" size={36} color="#334155" />
                                 </TouchableOpacity>
                                 <Text style={styles.timeDigit}>{hour.toString().padStart(2, '0')}</Text>
                                 <TouchableOpacity style={styles.chevronBtn} onPress={() => setHour(h => h === 1 ? 12 : h - 1)} activeOpacity={0.7}>
-                                    <Ionicons name="chevron-down" size={36} color="#0369A1" />
+                                    <Ionicons name="chevron-down" size={36} color="#334155" />
                                 </TouchableOpacity>
                             </View>
                             <Text style={styles.timeSeparator}>:</Text>
                             {/* Minute */}
                             <View style={styles.timeCol}>
                                 <TouchableOpacity style={styles.chevronBtn} onPress={() => setMinute(m => m >= 55 ? 0 : m + 5)} activeOpacity={0.7}>
-                                    <Ionicons name="chevron-up" size={36} color="#0369A1" />
+                                    <Ionicons name="chevron-up" size={36} color="#334155" />
                                 </TouchableOpacity>
                                 <Text style={styles.timeDigit}>{minute.toString().padStart(2, '0')}</Text>
                                 <TouchableOpacity style={styles.chevronBtn} onPress={() => setMinute(m => m < 5 ? 55 : m - 5)} activeOpacity={0.7}>
-                                    <Ionicons name="chevron-down" size={36} color="#0369A1" />
+                                    <Ionicons name="chevron-down" size={36} color="#334155" />
                                 </TouchableOpacity>
                             </View>
                             {/* AM/PM */}
@@ -336,10 +330,10 @@ const LanguagePicker = ({
                                 </Text>
                                 {item.code === 'fil-PH' && item.geminiName !== 'Filipino/Tagalog' && (
                                     <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginRight: 8 }}>
-                                        <Text style={{ fontSize: 10, color: '#92400E', fontWeight: '700' }}>DIALECT</Text>
+                                        <Text style={{ fontSize: 14, color: '#92400E', fontWeight: '800' }}>DIALECT</Text>
                                     </View>
                                 )}
-                                {isSelected && <Ionicons name="checkmark-circle" size={20} color="#1D4ED8" />}
+                                {isSelected && <Ionicons name="checkmark-circle" size={20} color="#334155" />}
                             </TouchableOpacity>
                         );
                     }}
@@ -657,7 +651,7 @@ export default function Scanner() {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle="dark-content" />
 
             {photo ? (
                 // Mode 1: Review / Results
@@ -701,28 +695,18 @@ export default function Scanner() {
 
                                 {/* Sheet Header */}
                                 <View style={styles.sheetTopRow}>
-                                    <View style={styles.sheetTopIcon}>
-                                        <Ionicons name="medical" size={16} color="#0369A1" />
-                                    </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.sheetTopTitle}>
-                                            {results.length === 1 ? 'Prescription Result' : `${results.length} Medicines Found`}
+                                            {results.length === 1 ? '1 Medicine Found' : `${results.length} Medicines Found`}
                                         </Text>
-                                        <Text style={styles.sheetTopSub}>Tap a card to expand details</Text>
+                                        <Text style={styles.sheetTopSub}>Tap a card to view details</Text>
                                     </View>
-                                    {/* Language Picker Button */}
                                     <TouchableOpacity
                                         onPress={() => setShowLangPicker(true)}
-                                        style={{
-                                            flexDirection: 'row', alignItems: 'center', gap: 4,
-                                            backgroundColor: '#EFF6FF',
-                                            paddingHorizontal: 10, paddingVertical: 6,
-                                            borderRadius: 20, marginRight: 8,
-                                            borderWidth: 1, borderColor: '#BFDBFE',
-                                        }}
+                                        style={styles.langChip}
                                     >
-                                        <Text style={{ fontSize: 14 }}>{selectedLang.label.split(' ')[0]}</Text>
-                                        <Ionicons name="chevron-down" size={12} color="#3B82F6" />
+                                        <Text style={styles.langChipText}>{selectedLang.label.split(' ')[0]}</Text>
+                                        <Ionicons name="chevron-down" size={12} color="#0369A1" />
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={retakePhoto} style={styles.sheetCloseBtn}>
                                         <Ionicons name="camera-outline" size={20} color="#64748B" />
@@ -754,7 +738,7 @@ export default function Scanner() {
                                     {isTranslatingAll && (
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 4 }}>
                                             <ActivityIndicator size={16} color="#0369A1" />
-                                            <Text style={{ fontSize: 13, color: '#64748B' }}>Translating to {selectedLang.label.split(' ').slice(1).join(' ')}...</Text>
+                                            <Text style={{ fontSize: 14, color: '#64748B', fontWeight: '500' }}>Translating to {selectedLang.label.split(' ').slice(1).join(' ')}...</Text>
                                         </View>
                                     )}
                                     {results.map((med, index) => {
@@ -818,37 +802,59 @@ export default function Scanner() {
                                                 {isExpanded && (
                                                     <View style={styles.medCardBody}>
                                                         {/* Dosage + Time chips */}
-                                                        <View style={styles.chipRow}>
-                                                            <View style={styles.infoChip}>
-                                                                <Ionicons name="flask-outline" size={14} color="#0369A1" />
-                                                                <Text style={styles.infoChipLabel}>Dosage</Text>
-                                                                <Text style={styles.infoChipVal}>{med.dosage || '—'}</Text>
+                                                        <View style={styles.statsGrid}>
+                                                            <View style={styles.statBox}>
+                                                                <View style={[styles.statIcon, { backgroundColor: '#F0F9FF' }]}>
+                                                                    <MaterialIcons name="schedule" size={22} color="#3B82F6" />
+                                                                </View>
+                                                                <Text style={styles.statLabel}>Frequency</Text>
+                                                                <Text style={styles.statValue}>{med.recommendedTime || 'As needed'}</Text>
                                                             </View>
-                                                            <View style={styles.infoChip}>
-                                                                <Ionicons name="time-outline" size={14} color="#0369A1" />
-                                                                <Text style={styles.infoChipLabel}>Time</Text>
-                                                                <Text style={styles.infoChipVal}>{med.recommendedTime || '—'}</Text>
+                                                            <View style={styles.statBox}>
+                                                                <View style={[styles.statIcon, { backgroundColor: '#F0FDF4' }]}>
+                                                                    <MaterialIcons name="verified" size={22} color="#10B981" />
+                                                                </View>
+                                                                <Text style={styles.statLabel}>Status</Text>
+                                                                <Text style={styles.statValue}>Verified</Text>
                                                             </View>
                                                         </View>
 
-                                                        {/* Purpose */}
-                                                        <View style={styles.sectionBlock}>
-                                                            <View style={styles.sectionBlockHeader}>
-                                                                <Text style={styles.sectionLabel}>PURPOSE</Text>
-                                                                <TouchableOpacity onPress={() => handleSpeak(displayPurpose)} style={styles.ttsInline}>
-                                                                    <Ionicons name="volume-high-outline" size={15} color="#94A3B8" />
+                                                        {/* Purpose Card */}
+                                                        <View style={styles.sectionCard}>
+                                                            <View style={styles.cardHeader}>
+                                                                <MaterialIcons name="description" size={24} color="#0369A1" />
+                                                                <Text style={styles.cardTitle}>Purpose</Text>
+                                                                <TouchableOpacity onPress={() => handleSpeak(displayPurpose)} style={styles.ttsBtn}>
+                                                                    <Ionicons name="volume-medium" size={24} color="#0369A1" />
                                                                 </TouchableOpacity>
                                                             </View>
-                                                            <Text style={styles.bodyText}>{displayPurpose}</Text>
+                                                            <Text style={styles.usageText}>{displayPurpose}</Text>
                                                         </View>
 
-                                                        {/* Ingredients */}
-                                                        <View style={styles.sectionBlock}>
-                                                            <Text style={styles.sectionLabel}>ACTIVE INGREDIENTS</Text>
-                                                            <Text style={styles.bodyText}>{med.activeIngredients}</Text>
+                                                        {/* Ingredients Card */}
+                                                        <View style={styles.sectionCard}>
+                                                            <View style={styles.cardHeader}>
+                                                                <MaterialIcons name="science" size={24} color="#64748B" />
+                                                                <Text style={styles.cardTitle}>Active Ingredients</Text>
+                                                            </View>
+                                                            <Text style={styles.usageText}>{med.activeIngredients}</Text>
                                                         </View>
 
-                                                        {/* Patient ID Card */}
+                                                        {/* Side Effects Card */}
+                                                        {med.sideEffects && (
+                                                            <View style={styles.sectionCard}>
+                                                                <View style={styles.cardHeader}>
+                                                                    <MaterialIcons name="error-outline" size={24} color="#64748B" />
+                                                                    <Text style={styles.cardTitle}>Side Effects</Text>
+                                                                    <TouchableOpacity onPress={() => handleSpeak(med.sideEffects ?? '')} style={styles.ttsBtn}>
+                                                                        <Ionicons name="volume-medium" size={24} color="#64748B" />
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                                <Text style={styles.sideEffectText}>{med.sideEffects}</Text>
+                                                            </View>
+                                                        )}
+
+                                                        {/* Patient ID Component (if available) */}
                                                         {(med.patientName || med.patientAge || med.patientSex) && (
                                                             <View style={styles.patientIdCard}>
                                                                 <View style={styles.patientAvatarContainer}>
@@ -1387,44 +1393,52 @@ const styles = StyleSheet.create({
     // --- Restored Missing Styles ---
     recentItem: {
         flexDirection: 'row',
-        padding: scale(16),
-        backgroundColor: '#FAFBFC',
-        borderRadius: 16,
-        marginBottom: verticalScale(12),
+        padding: scale(20),
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24, // Consistent with medCard
+        marginBottom: verticalScale(16),
         alignItems: 'center',
-        gap: scale(16),
+        gap: scale(18),
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: '#F1F5F9',
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
     },
     recentThumb: {
-        width: scale(56),
-        height: scale(56),
-        borderRadius: 12,
-        backgroundColor: '#E2E8F0',
+        display: 'none',
+    },
+    severityDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     recentInfo: {
         flex: 1,
         justifyContent: 'center',
     },
     recentName: {
-        fontSize: moderateScale(16),
-        fontWeight: '600',
+        fontSize: moderateScale(17),
+        fontWeight: '700',
         color: '#0F172A',
-        marginBottom: 4,
+        marginBottom: verticalScale(8),
     },
     recentTime: {
-        fontSize: moderateScale(12),
-        color: '#64748B',
+        fontSize: moderateScale(14),
+        color: '#94A3B8',
+        fontWeight: '500',
     },
 
     // Empty States & Sheets
     emptyState: { alignItems: 'center', padding: scale(40), opacity: 0.6 },
-    emptyText: { marginTop: verticalScale(16), fontSize: moderateScale(16), color: '#64748B' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    bottomSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%', paddingBottom: verticalScale(40) },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: scale(20), borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-    sheetTitle: { fontSize: moderateScale(18), fontWeight: '700', color: '#0F172A' },
-    closeIconBtn: { padding: 4 },
+    emptyText: { marginTop: verticalScale(16), fontSize: moderateScale(18), color: '#64748B', fontWeight: '600' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    bottomSheet: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 30, borderTopRightRadius: 30, maxHeight: '80%', paddingBottom: verticalScale(40) },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: scale(24), borderBottomWidth: 1, borderBottomColor: '#E0F2FE' },
+    sheetTitle: { fontSize: moderateScale(22), fontWeight: '800', color: '#0369A1' },
+    closeIconBtn: { padding: 8 },
     recentList: { padding: scale(20) },
 
     // Permissions
@@ -1452,7 +1466,7 @@ const styles = StyleSheet.create({
     },
     bottomSheetContent: { flex: 1 },
     dragHandle: { width: 36, height: 4, backgroundColor: '#CBD5E1', borderRadius: 2, alignSelf: 'center', marginTop: verticalScale(10) },
-    resultsScroll: { paddingHorizontal: scale(18), paddingTop: verticalScale(12), paddingBottom: verticalScale(120) },
+    resultsScroll: { paddingHorizontal: scale(20), paddingTop: verticalScale(12), paddingBottom: verticalScale(120) },
 
     // Sheet Header Row
     sheetTopRow: {
@@ -1472,8 +1486,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    sheetTopTitle: { fontSize: moderateScale(16), fontWeight: '700', color: '#0F172A' },
-    sheetTopSub: { fontSize: moderateScale(12), color: '#94A3B8', marginTop: 2 },
+    sheetTopTitle: { fontSize: moderateScale(16), fontWeight: '700', color: '#1E293B' },
+    sheetTopSub: { fontSize: moderateScale(14), color: '#94A3B8', marginTop: 2, fontWeight: '500' },
     sheetCloseBtn: {
         width: scale(36),
         height: scale(36),
@@ -1486,30 +1500,122 @@ const styles = StyleSheet.create({
     // Error State
     errorTitle: { fontSize: moderateScale(18), fontWeight: '700', color: '#EF4444', marginBottom: verticalScale(8) },
     errorDesc: { fontSize: moderateScale(14), color: '#64748B', textAlign: 'center', marginBottom: verticalScale(16) },
-    primaryBtn: { backgroundColor: '#0369A1', paddingVertical: verticalScale(14), borderRadius: 14, alignItems: 'center', width: '100%' },
+    primaryBtn: { backgroundColor: '#334155', paddingVertical: verticalScale(14), borderRadius: 14, alignItems: 'center', width: '100%' },
     primaryBtnText: { fontSize: moderateScale(16), fontWeight: '600', color: '#FFF' },
 
     // Alerts
-    alertBanner: { flexDirection: 'column', gap: 8, padding: scale(14), borderRadius: 14, marginBottom: verticalScale(14), marginTop: verticalScale(10), borderLeftWidth: 0 },
-    alertHigh: { backgroundColor: '#FEF2F2', borderLeftColor: '#DC2626', borderWidth: 0 },
-    alertMedium: { backgroundColor: '#FFFBEB', borderLeftColor: '#D97706', borderWidth: 0 },
+    alertBanner: { flexDirection: 'column', gap: 8, padding: scale(16), borderRadius: 24, marginBottom: verticalScale(16), marginTop: verticalScale(10), borderLeftWidth: 0 },
+    alertHigh: { backgroundColor: '#FEF2F2', borderColor: '#FEE2E2', borderWidth: 1 },
+    alertMedium: { backgroundColor: '#FFFBEB', borderColor: '#FEF3C7', borderWidth: 1 },
     alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    alertTitle: { fontSize: moderateScale(14), fontWeight: '700' },
-    alertDesc: { fontSize: moderateScale(13), color: '#64748B', lineHeight: 19 },
+    alertTitle: { fontSize: moderateScale(14), fontWeight: '800', letterSpacing: -0.2 },
+    alertDesc: { fontSize: moderateScale(14), color: '#64748B', lineHeight: 22, fontWeight: '500' },
 
-    // Medication Card
     medCard: {
         backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: scale(18),
-        marginTop: verticalScale(12),
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        elevation: 1,
-        borderWidth: 0,
+        borderRadius: 24,
+        padding: scale(20),
+        marginTop: verticalScale(16),
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
         overflow: 'hidden',
+    },
+    // Ported high-fidelity section card styles
+    statsGrid: {
+        flexDirection: 'row',
+        gap: scale(12),
+        marginBottom: verticalScale(24),
+    },
+    statBox: {
+        flex: 1,
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        padding: scale(14),
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    statIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    statLabel: {
+        fontSize: moderateScale(14),
+        fontWeight: '700',
+        color: '#94A3B8',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    statValue: {
+        fontSize: moderateScale(14),
+        fontWeight: '800',
+        color: '#0F172A',
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    ttsBtn: {
+        padding: 4,
+    },
+    usageText: {
+        fontSize: moderateScale(16),
+        color: '#334155',
+        lineHeight: 24,
+        fontWeight: '500',
+    },
+    warningCard: {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FEE2E2',
+    },
+    warningText: {
+        fontSize: moderateScale(15),
+        color: '#991B1B',
+        lineHeight: 24,
+        fontWeight: '600',
+    },
+    sideEffectText: {
+        fontSize: moderateScale(15),
+        color: '#64748B',
+        lineHeight: 22,
+        fontWeight: '500',
+    },
+    sectionCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: scale(20),
+        marginBottom: verticalScale(16),
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        gap: 10,
+    },
+    cardTitle: {
+        fontSize: moderateScale(18),
+        fontWeight: '800',
+        color: '#0F172A',
+        flex: 1,
     },
     medCardIconWrap: {
         width: scale(38),
@@ -1528,14 +1634,29 @@ const styles = StyleSheet.create({
     // Pills / Badges
     fraudPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: scale(8), paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
     fraudDot: { width: 6, height: 6, borderRadius: 3 },
-    fraudPillText: { fontSize: moderateScale(11), fontWeight: '700' },
-    dosagePill: { backgroundColor: '#F0F9FF', paddingHorizontal: scale(8), paddingVertical: 3, borderRadius: 20 },
-    dosagePillText: { fontSize: moderateScale(11), fontWeight: '600', color: '#0369A1' },
+    fraudPillText: { fontSize: moderateScale(14), fontWeight: '700' },
+    dosagePill: { backgroundColor: '#F8FAFC', paddingHorizontal: scale(8), paddingVertical: 3, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+    dosagePillText: { fontSize: moderateScale(14), fontWeight: '600', color: '#64748B' },
 
     speakAndChevron: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
     speakBtn: { padding: 4 },
     ttsInline: { padding: 4 },
 
+    langChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: scale(10),
+        paddingVertical: verticalScale(6),
+        borderRadius: 12,
+        backgroundColor: '#F1F5F9',
+        marginRight: scale(8),
+    },
+    langChipText: {
+        fontSize: moderateScale(14),
+        color: '#334155',
+        fontWeight: '600',
+    },
     // Info Chip Row
     chipRow: { flexDirection: 'row', gap: scale(12) },
     infoChip: {
@@ -1548,21 +1669,21 @@ const styles = StyleSheet.create({
         gap: 5,
         alignItems: 'center',
     },
-    infoChipLabel: { fontSize: moderateScale(10), fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8 },
+    infoChipLabel: { fontSize: moderateScale(14), fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8 },
     infoChipVal: { fontSize: moderateScale(14), fontWeight: '600', color: '#0F172A' },
 
     // Section block
     sectionBlock: { gap: verticalScale(6) },
     sectionBlockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: verticalScale(2) },
-    sectionLabel: { fontSize: moderateScale(11), fontWeight: '800', color: '#0369A1', letterSpacing: 1.2, textTransform: 'uppercase' },
-    bodyText: { fontSize: moderateScale(14), color: '#334155', lineHeight: 22, fontWeight: '500' },
+    sectionLabel: { fontSize: moderateScale(14), fontWeight: '800', color: '#334155', letterSpacing: 1.2, textTransform: 'uppercase' },
+    bodyText: { fontSize: moderateScale(14), color: '#475569', lineHeight: 22, fontWeight: '500' },
 
     // Compat aliases
     infoRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
     infoBlock: { flex: 1 },
-    infoLabel: { fontSize: moderateScale(11), fontWeight: '700', color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
+    infoLabel: { fontSize: moderateScale(14), fontWeight: '700', color: '#94A3B8', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 },
     infoVal: { fontSize: moderateScale(17), color: '#0F172A', fontWeight: '600', lineHeight: 24 },
-    sectionHeader: { fontSize: moderateScale(13), fontWeight: '700', color: '#64748B', marginTop: verticalScale(16), marginBottom: verticalScale(8), letterSpacing: 0.5 },
+    sectionHeader: { fontSize: moderateScale(14), fontWeight: '700', color: '#64748B', marginTop: verticalScale(16), marginBottom: verticalScale(8), letterSpacing: 0.5 },
 
     // Patient ID Card
     patientIdCard: {
@@ -1599,16 +1720,15 @@ const styles = StyleSheet.create({
     // Warnings
     warningCardClean: {
         backgroundColor: '#FEF2F2',
-        borderLeftWidth: 0,
-        borderLeftColor: '#DC2626',
-        padding: scale(14),
-        borderRadius: 12,
-        marginTop: verticalScale(6),
-        borderWidth: 0,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.03,
-        shadowRadius: 4,
+        padding: scale(16),
+        borderRadius: 20,
+        marginTop: verticalScale(12),
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
         elevation: 1,
     },
     warningIconWrap: {
@@ -1620,21 +1740,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     warningHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: verticalScale(10) },
-    warningTitleClean: { fontSize: moderateScale(13), fontWeight: '800', color: '#991B1B', flex: 1 },
-    warningTextClean: { fontSize: moderateScale(13), color: '#7F1D1D', lineHeight: 20, marginTop: 6, paddingLeft: scale(8), fontWeight: '500' },
+    warningTitleClean: { fontSize: moderateScale(14), fontWeight: '800', color: '#991B1B', flex: 1 },
+    warningTextClean: { fontSize: moderateScale(14), color: '#7F1D1D', lineHeight: 20, marginTop: 6, paddingLeft: scale(8), fontWeight: '500' },
 
     // Food Section
     foodSectionClean: { marginTop: verticalScale(4) },
-    sectionHeaderLabel: { fontSize: moderateScale(11), fontWeight: '700', color: '#94A3B8', marginBottom: verticalScale(8), letterSpacing: 1 },
+    sectionHeaderLabel: { fontSize: moderateScale(14), fontWeight: '700', color: '#94A3B8', marginBottom: verticalScale(8), letterSpacing: 1 },
     foodItemRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: verticalScale(6), borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    foodItemText: { fontSize: moderateScale(13), color: '#475569' },
+    foodItemText: { fontSize: moderateScale(14), color: '#475569', fontWeight: '500' },
 
     // Deprecated (kept empty)
     patientInfo: {},
     prescriptionVerification: {},
     foodWarningSection: {},
-    warningCard: {},
-    warningText: {},
     verificationHeader: {},
     signatureBadge: {},
     signatureBadgeText: {},
@@ -1645,9 +1763,9 @@ const styles = StyleSheet.create({
     // Prescription / Rx Card (clean)
     rxCard: {
         backgroundColor: '#F0FDF4',
-        borderRadius: 14,
-        padding: scale(14),
-        marginTop: verticalScale(4),
+        borderRadius: 20,
+        padding: scale(16),
+        marginTop: verticalScale(12),
         borderWidth: 1,
         borderColor: '#BBF7D0',
     },
@@ -1664,7 +1782,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    rxCardTitle: { fontSize: moderateScale(13), fontWeight: '700', color: '#15803D', flex: 1 },
+    rxCardTitle: { fontSize: moderateScale(14), fontWeight: '700', color: '#15803D', flex: 1 },
     rxSignedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1674,7 +1792,7 @@ const styles = StyleSheet.create({
         paddingVertical: 3,
         borderRadius: 20,
     },
-    rxSignedText: { fontSize: moderateScale(11), fontWeight: '700', color: '#15803D' },
+    rxSignedText: { fontSize: moderateScale(14), fontWeight: '700', color: '#15803D' },
     rxDivider: { height: 1, backgroundColor: '#BBF7D0', marginVertical: verticalScale(10) },
     rxRow: {
         flexDirection: 'row',
@@ -1682,17 +1800,17 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         paddingVertical: verticalScale(4),
     },
-    rxLabel: { fontSize: moderateScale(12), fontWeight: '600', color: '#6B7280', flex: 1 },
-    rxValue: { fontSize: moderateScale(13), fontWeight: '600', color: '#1E293B', flex: 2, textAlign: 'right' },
+    rxLabel: { fontSize: moderateScale(14), fontWeight: '600', color: '#6B7280', flex: 1 },
+    rxValue: { fontSize: moderateScale(14), fontWeight: '600', color: '#1E293B', flex: 2, textAlign: 'right' },
 
 
 
     // Affordability
-    affordabilitySection: { marginTop: verticalScale(24), padding: scale(20), backgroundColor: '#F8FAFC', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-    savingsCard: { backgroundColor: '#FFF', borderRadius: 16, padding: scale(20), marginBottom: verticalScale(16), borderWidth: 1, borderColor: '#E2E8F0' },
+    affordabilitySection: { marginTop: verticalScale(24), padding: scale(20), backgroundColor: '#F9FAFB', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    savingsCard: { backgroundColor: '#FFF', borderRadius: 16, padding: scale(20), marginBottom: verticalScale(16), borderWidth: 1, borderColor: '#F1F5F9' },
     savingsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: verticalScale(12) },
-    savingsTitle: { fontSize: moderateScale(16), fontWeight: '700', color: '#0F172A' },
-    genericName: { fontSize: moderateScale(18), fontWeight: '700', color: '#0369A1', marginBottom: 4 },
+    savingsTitle: { fontSize: moderateScale(16), fontWeight: '700', color: '#1E293B' },
+    genericName: { fontSize: moderateScale(18), fontWeight: '700', color: '#334155', marginBottom: 4 },
     savingsAmount: { fontSize: moderateScale(14), color: '#10B981', fontWeight: '600', marginBottom: 8 },
     pharmacyHint: { fontSize: moderateScale(13), color: '#64748B' },
 
@@ -1720,12 +1838,12 @@ const styles = StyleSheet.create({
     },
     seniorDiscountBadgeText: {
         color: '#FFF',
-        fontSize: moderateScale(11),
+        fontSize: moderateScale(14),
         fontWeight: '800',
         letterSpacing: 0.5
     },
     seniorDiscountText: {
-        fontSize: moderateScale(13),
+        fontSize: moderateScale(14),
         color: '#6B21A8',
         fontWeight: '700',
         flex: 1
@@ -1738,20 +1856,20 @@ const styles = StyleSheet.create({
     govAssistTitle: { fontSize: moderateScale(15), fontWeight: '700', color: '#0F172A' },
     govAssistBody: { gap: verticalScale(8) },
     govAssistItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    govAssistContact: { fontSize: moderateScale(13), fontWeight: '600', color: '#0369A1' },
+    govAssistContact: { fontSize: moderateScale(14), fontWeight: '600', color: '#0369A1' },
 
     philhealthCard: { flexDirection: 'row', alignItems: 'center', padding: scale(16), backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', gap: 12 },
-    philhealthText: { fontSize: moderateScale(13), color: '#64748B', flex: 1 },
+    philhealthText: { fontSize: moderateScale(14), color: '#64748B', flex: 1, fontWeight: '500' },
 
     // Action Buttons
     actionRow: { flexDirection: 'row', gap: scale(12), marginTop: verticalScale(12) },
-    primaryBtnRow: { flex: 1, backgroundColor: '#0369A1', paddingVertical: verticalScale(14), borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+    primaryBtnRow: { flex: 1, backgroundColor: '#334155', paddingVertical: verticalScale(14), borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
     reminderBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: scale(8),
-        backgroundColor: '#0369A1',
+        backgroundColor: '#334155',
         paddingVertical: verticalScale(14),
         borderRadius: 14,
         marginTop: verticalScale(16),

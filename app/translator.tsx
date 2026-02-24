@@ -142,7 +142,7 @@ export default function Translator() {
                     <Animated.View entering={FadeInUp.duration(500).springify()} style={styles.resultSection}>
                         <View style={styles.resultHeader}>
                             <View style={styles.langRow}>
-                                <Text style={styles.flagEmoji}>🇺🇸</Text>
+                                <Ionicons name="flag-outline" size={18} color="#0369A1" />
                                 <Text style={styles.sectionLabel}>English Translation</Text>
                             </View>
                             <TouchableOpacity
@@ -168,8 +168,8 @@ export default function Translator() {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#43e97b" />
+                <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#0369A1" />
 
             <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -202,10 +202,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 14,
-        backgroundColor: '#43e97b',
+        backgroundColor: '#0369A1',
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
-        shadowColor: '#43e97b',
+        shadowColor: '#0369A1',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.2,
         shadowRadius: 12,
@@ -228,8 +228,8 @@ const styles = StyleSheet.create({
         letterSpacing: -0.3,
     },
     headerSub: {
-        fontSize: 12,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
         color: 'rgba(255,255,255,0.8)',
         marginTop: 2,
     },
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     },
     instructionText: {
         flex: 1,
-        fontSize: 13,
+        fontSize: 14,
         color: '#166534',
         fontWeight: '600',
     },
@@ -306,10 +306,10 @@ const styles = StyleSheet.create({
         lineHeight: 24,
     },
     charCount: {
-        fontSize: 11,
+        fontSize: 14,
         color: '#94A3B8',
         textAlign: 'right',
-        fontWeight: '500',
+        fontWeight: '600',
     },
     translateButton: {
         backgroundColor: '#43e97b',

@@ -1,27 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Linking,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Linking,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Animated, {
-    FadeInDown,
-    FadeInUp,
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSequence,
-    withTiming
+  FadeInDown,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming
 } from 'react-native-reanimated';
 import { moderateScale, scale, verticalScale } from '../../utils/responsive';
 
@@ -42,24 +41,6 @@ export default function App() {
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
-
-  // Animated medical icon rotation
-  const iconRotation = useSharedValue(0);
-  useEffect(() => {
-    iconRotation.value = withRepeat(
-      withSequence(
-        withTiming(8, { duration: 1500 }),
-        withTiming(-8, { duration: 1500 }),
-        withTiming(0, { duration: 1000 })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${iconRotation.value}deg` }],
-  }));
 
   // Status dot pulse
   const statusPulse = useSharedValue(1);
@@ -154,7 +135,7 @@ export default function App() {
       subtitle: 'AI Medicine Identification',
       icon: 'scan-circle',
       route: '/scanner' as const,
-      color: '#0369A1',
+      color: '#38BDF8',
       status: 'READY',
     },
     {
@@ -162,31 +143,15 @@ export default function App() {
       subtitle: 'Track Your Medicines',
       icon: 'list-circle',
       route: '/medications' as const,
-      color: '#0EA5E9',
+      color: '#38BDF8',
       status: 'ACTIVE',
-    },
-    {
-      title: 'Emergency SOS',
-      subtitle: 'Quick Response System',
-      icon: 'alert-circle',
-      route: '/emergency' as const,
-      color: '#DC2626',
-      status: 'STANDBY',
-    },
-    {
-      title: 'Scan History',
-      subtitle: 'Past Medicine Scans',
-      icon: 'time-outline',
-      route: '/scan-history' as const,
-      color: '#7C3AED',
-      status: 'LOG',
     },
     {
       title: 'Find Pharmacy',
       subtitle: 'Nearest Pharmacy Locator',
       icon: 'location-outline',
       route: '/pharmacy-finder' as const,
-      color: '#059669',
+      color: '#38BDF8',
       status: 'NEAR YOU',
     },
   ];
@@ -195,9 +160,8 @@ export default function App() {
 
   const Content = (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#F1F5F9" />
+      <StatusBar barStyle="dark-content" />
 
-      {/* Offline banner */}
       {!isOnline && (
         <View style={styles.offlineBanner}>
           <Ionicons name="wifi-outline" size={14} color="#FFF" />
@@ -205,104 +169,87 @@ export default function App() {
         </View>
       )}
 
-      {/* HEADER */}
-      <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.header}>
-        <View>
-          <Text style={styles.greetingText}>{greeting} 👋</Text>
-          <Text style={styles.brandLabel}>MEDIMATE v2.5</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Animated.View style={iconStyle}>
-            <View style={styles.headerIconWrap}>
-              <Ionicons name="medical" size={24} color="#0369A1" />
-            </View>
-          </Animated.View>
-          <TouchableOpacity onPress={() => router.push('/profile')} activeOpacity={0.8}>
-            <View style={styles.profileBtn}>
-              <Ionicons name="person" size={18} color="#FFF" />
-            </View>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-
-      {/* STATUS BAR */}
-      <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.statusRow}>
-        <View style={styles.statusItem}>
-          <Animated.View
-            style={[
-              styles.statusDot,
-              { backgroundColor: isOnline ? '#10B981' : '#64748B' },
-              statusDotStyle,
-            ]}
-          />
-          <Text style={styles.statusText}>{isOnline ? 'ONLINE' : 'OFFLINE'}</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.statusItem, { flex: 1 }]}
-          onPress={handleLocationEdit}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={currentLocation ? 'location' : 'location-outline'}
-            size={12}
-            color={currentLocation ? '#10B981' : '#64748B'}
-          />
-          <Text style={styles.statusText} numberOfLines={1}>
-            {fetchingLocation
-              ? 'ACQUIRING...'
-              : address
-                ? address
-                : locationActive
-                  ? 'GPS READY'
-                  : 'GPS OFF'}
-          </Text>
-          <Ionicons name="chevron-forward" size={10} color="#0369A1" style={{ marginLeft: 4 }} />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* MODULE CARDS */}
-      <View style={styles.gridContainer}>
-        {modules.map((item, index) => (
-          <AnimatedTouchable
-            key={index}
-            entering={FadeInUp.duration(500).delay(300 + index * 120).springify().damping(14)}
-            style={styles.moduleCard}
-            onPress={() => item.route && router.push(item.route)}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#FFFFFF', '#F8FAFC']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.cardGradient}
-            >
-              <View style={[styles.cardAccent, { backgroundColor: item.color }]} />
-              <View style={[styles.iconContainer, { backgroundColor: `${item.color}15` }]}>
-                <Ionicons name={item.icon as any} size={30} color={item.color} />
+      <View style={styles.headerSection}>
+        <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.header}>
+          <View>
+            <Text style={styles.greetingText}>{greeting}</Text>
+            <Text style={styles.brandLabel}>CLARIFY.</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TouchableOpacity onPress={() => router.push('/profile')} activeOpacity={0.8}>
+              <View style={styles.profileBtn}>
+                <Ionicons name="person-outline" size={20} color="#334155" />
               </View>
-              <View style={styles.moduleContent}>
-                <Text style={styles.moduleTitle}>{item.title}</Text>
-                <Text style={styles.moduleSubtitle}>{item.subtitle}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: `${item.color}15` }]}>
-                  <View style={[styles.badgeDot, { backgroundColor: item.color }]} />
-                  <Text style={[styles.statusBadgeText, { color: item.color }]}>{item.status}</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.statusRow}>
+          <View style={styles.statusPill}>
+            <Animated.View
+              style={[
+                styles.statusDot,
+                { backgroundColor: isOnline ? '#10B981' : '#EF4444' },
+                statusDotStyle,
+              ]}
+            />
+            <Text style={styles.statusText}>{isOnline ? 'System Online' : 'Offline Mode'}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.locationPill}
+            onPress={handleLocationEdit}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={currentLocation ? 'location' : 'location-outline'}
+              size={12}
+              color="#64748B"
+            />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {fetchingLocation
+                ? 'Acquiring...'
+                : address
+                  ? address
+                  : locationActive
+                    ? 'GPS Active'
+                    : 'GPS Off'}
+            </Text>
+            <Ionicons name="chevron-forward" size={10} color="#94A3B8" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      <View style={styles.mainContent}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>What can I help you with today?</Text>
+        </View>
+
+        <View style={styles.gridContainer}>
+          {modules.map((item, index) => (
+            <AnimatedTouchable
+              key={index}
+              entering={FadeInUp.duration(500).delay(300 + index * 120).springify().damping(14)}
+              style={styles.moduleCard}
+              onPress={() => item.route && router.push(item.route)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.cardContent}>
+                <View style={[styles.iconContainer, { backgroundColor: '#F8FAFC' }]}>
+                  <Ionicons name={item.icon as any} size={28} color="#334155" />
+                </View>
+                <View style={styles.moduleInfo}>
+                  <Text style={styles.moduleTitle}>{item.title}</Text>
+                  <Text style={styles.moduleSubtitle}>{item.subtitle}</Text>
+                </View>
+                <View style={styles.arrowContainer}>
+                  <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
                 </View>
               </View>
-              <View style={[styles.arrowContainer, { backgroundColor: `${item.color}10` }]}>
-                <Ionicons name="chevron-forward" size={20} color={item.color} />
-              </View>
-            </LinearGradient>
-          </AnimatedTouchable>
-        ))}
+            </AnimatedTouchable>
+          ))}
+        </View>
       </View>
 
-      {/* FOOTER */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>ID: DOST-GRANT-APP-001</Text>
-        <Text style={styles.footerText}>SECURE CONTEXT</Text>
-      </View>
-
-      {/* LOCATION MODAL */}
       {showLocationModal && (
         <View style={styles.modalOverlay}>
           <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.modalCard}>
@@ -310,23 +257,22 @@ export default function App() {
               <View style={styles.modalIconBg}>
                 <Ionicons name="location" size={28} color="#FFFFFF" />
               </View>
-              <Text style={styles.modalTitle}>MY LOCATION</Text>
-              <Text style={styles.modalSubtitle}>Real-time GPS tracking active</Text>
+              <Text style={styles.modalTitle}>LOCATION SERVICES</Text>
             </View>
             <View style={styles.addressCard}>
-              <Ionicons name="navigate-circle" size={24} color="#0369A1" />
+              <Ionicons name="navigate-circle" size={24} color="#334155" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.addressLabel}>CURRENT ADDRESS</Text>
                 <Text style={styles.addressText}>{address || 'Fetching address...'}</Text>
               </View>
             </View>
             <TouchableOpacity style={styles.btnMaps} onPress={openInGoogleMaps} activeOpacity={0.8}>
-              <Ionicons name="map" size={20} color="#FFFFFF" />
-              <Text style={styles.btnMapsText}>OPEN IN GOOGLE MAPS</Text>
+              <Ionicons name="map-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.btnMapsText}>OPEN IN MAPS</Text>
             </TouchableOpacity>
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.btnRefresh} onPress={refreshLocation} activeOpacity={0.8}>
-                <Ionicons name="refresh" size={18} color="#0369A1" />
+                <Ionicons name="refresh" size={18} color="#334155" />
                 <Text style={styles.btnRefreshText}>REFRESH</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.btnClose} onPress={() => setShowLocationModal(false)} activeOpacity={0.8}>
@@ -341,7 +287,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 96 }}>
         {Content}
       </ScrollView>
     </SafeAreaView>
@@ -353,256 +299,222 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  headerSection: {
     backgroundColor: '#FFFFFF',
+    paddingBottom: verticalScale(20),
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   header: {
     paddingHorizontal: scale(24),
-    paddingTop: verticalScale(48),
-    paddingBottom: verticalScale(24),
+    paddingTop: verticalScale(24),
+    paddingBottom: verticalScale(16),
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
   },
   greetingText: {
-    fontSize: moderateScale(22),
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.3,
+    fontSize: moderateScale(14),
+    fontWeight: '600',
+    color: '#64748B',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginBottom: 4,
   },
   brandLabel: {
-    fontSize: moderateScale(11),
-    fontWeight: '700',
-    color: '#94A3B8',
-    letterSpacing: 1.5,
-  },
-  headerIconWrap: {
-    width: scale(48),
-    height: scale(48),
-    borderRadius: 14,
-    backgroundColor: '#F0F4F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0,
+    fontSize: moderateScale(28),
+    fontWeight: '900',
+    color: '#1E293B',
+    letterSpacing: -1,
   },
   profileBtn: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: 14,
-    backgroundColor: '#0369A1',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: 22,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   statusRow: {
     flexDirection: 'row',
     paddingHorizontal: scale(24),
-    paddingVertical: verticalScale(12),
     gap: scale(10),
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  statusItem: {
+  statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
-    backgroundColor: '#F9FAFB',
+    gap: scale(6),
     paddingHorizontal: scale(12),
     paddingVertical: verticalScale(8),
-    borderRadius: 20,
-    borderWidth: 0,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    flex: 1,
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(8),
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   statusText: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(12),
     fontWeight: '700',
-    color: '#64748B',
-    letterSpacing: 0.5,
+    color: '#475569',
+  },
+  locationText: {
+    fontSize: moderateScale(12),
+    fontWeight: '600',
+    color: '#475569',
+    flex: 1,
   },
   statusDot: {
-    width: scale(7),
-    height: scale(7),
-    borderRadius: 4,
+    width: scale(6),
+    height: scale(6),
+    borderRadius: 3,
+  },
+  mainContent: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  sectionHeader: {
+    paddingHorizontal: scale(24),
+    paddingTop: verticalScale(28),
+    paddingBottom: verticalScale(12),
+  },
+  sectionTitle: {
+    fontSize: moderateScale(18),
+    fontWeight: '700',
+    color: '#1E293B',
+    letterSpacing: -0.2,
   },
   gridContainer: {
-    paddingHorizontal: scale(20),
-    paddingTop: verticalScale(20),
-    paddingBottom: verticalScale(8),
+    paddingHorizontal: scale(24),
+    paddingTop: verticalScale(8),
   },
   moduleCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     marginBottom: verticalScale(16),
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.02,
+    shadowRadius: 10,
     elevation: 2,
-    overflow: 'hidden',
   },
-  cardGradient: {
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: scale(20),
     gap: scale(16),
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 0,
-  },
-  cardAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    borderTopLeftRadius: 22,
-    borderBottomLeftRadius: 22,
   },
   iconContainer: {
     width: scale(56),
     height: scale(56),
-    borderRadius: 18,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  moduleContent: {
+  moduleInfo: {
     flex: 1,
-    gap: verticalScale(3),
+    gap: verticalScale(2),
   },
   moduleTitle: {
     fontSize: moderateScale(17),
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: 0.2,
+    fontWeight: '700',
+    color: '#1E293B',
   },
   moduleSubtitle: {
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(14),
     fontWeight: '500',
     color: '#64748B',
-    letterSpacing: 0.1,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(4),
-    borderRadius: 20,
-    gap: scale(5),
-    marginTop: verticalScale(4),
-    alignSelf: 'flex-start',
-  },
-  badgeDot: {
-    width: scale(5),
-    height: scale(5),
-    borderRadius: 3,
-  },
-  statusBadgeText: {
-    fontSize: moderateScale(10),
-    fontWeight: '700',
-    letterSpacing: 0.8,
   },
   arrowContainer: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: 12,
+    width: scale(32),
+    height: scale(32),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  footer: {
-    padding: scale(24),
-    marginTop: 'auto',
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: moderateScale(10),
-    fontWeight: '600',
-    color: '#CBD5E1',
-    letterSpacing: 1,
-  },
-  // Location Modal
   modalOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(30,41,59,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(24),
   },
   modalCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: scale(28),
+    borderRadius: 28,
+    padding: scale(32),
     width: '100%',
     maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: verticalScale(8) },
-    shadowOpacity: 0.10,
-    shadowRadius: 16,
-    elevation: 6,
   },
   modalHeader: {
     alignItems: 'center',
-    marginBottom: verticalScale(24),
-    gap: verticalScale(8),
+    marginBottom: verticalScale(28),
+    gap: verticalScale(12),
   },
   modalIconBg: {
-    width: scale(60),
-    height: scale(60),
-    borderRadius: 20,
-    backgroundColor: '#0369A1',
+    width: scale(64),
+    height: scale(64),
+    borderRadius: 24,
+    backgroundColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: verticalScale(8),
+    marginBottom: verticalScale(4),
   },
   modalTitle: {
-    fontSize: moderateScale(20),
-    fontWeight: '900',
-    color: '#0F172A',
+    fontSize: moderateScale(16),
+    fontWeight: '800',
+    color: '#1E293B',
     letterSpacing: 1,
-  },
-  modalSubtitle: {
-    fontSize: moderateScale(12),
-    fontWeight: '600',
-    color: '#64748B',
   },
   addressCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#F5F8FF',
-    padding: scale(16),
-    borderRadius: 14,
-    gap: scale(12),
-    marginBottom: verticalScale(16),
-    borderWidth: 0,
+    backgroundColor: '#F8FAFC',
+    padding: scale(20),
+    borderRadius: 16,
+    gap: scale(14),
+    marginBottom: verticalScale(20),
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   addressLabel: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(11),
     fontWeight: '800',
-    color: '#0369A1',
+    color: '#64748B',
     letterSpacing: 1,
     marginBottom: verticalScale(4),
   },
   addressText: {
     fontSize: moderateScale(15),
     fontWeight: '600',
-    color: '#0F172A',
+    color: '#1E293B',
     lineHeight: 22,
   },
   btnMaps: {
     flexDirection: 'row',
-    backgroundColor: '#0369A1',
-    paddingVertical: verticalScale(16),
+    backgroundColor: '#334155',
+    paddingVertical: verticalScale(18),
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -611,7 +523,7 @@ const styles = StyleSheet.create({
   },
   btnMapsText: {
     fontSize: moderateScale(15),
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
@@ -622,47 +534,46 @@ const styles = StyleSheet.create({
   btnRefresh: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#E0F2FE',
-    paddingVertical: verticalScale(14),
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: verticalScale(16),
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: scale(8),
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: '#E2E8F0',
   },
   btnRefreshText: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     fontWeight: '700',
-    color: '#0369A1',
+    color: '#334155',
   },
   btnClose: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: verticalScale(14),
-    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    paddingVertical: verticalScale(16),
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#F1F5F9',
   },
   btnCloseText: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     fontWeight: '700',
     color: '#64748B',
   },
   offlineBanner: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#EF4444',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: scale(6),
-    paddingVertical: verticalScale(8),
-    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(10),
   },
   offlineText: {
     color: '#FFF',
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(13),
     fontWeight: '700',
-    letterSpacing: 0.3,
   },
 });

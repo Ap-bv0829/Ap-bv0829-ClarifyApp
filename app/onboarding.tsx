@@ -22,24 +22,21 @@ const ONBOARDING_KEY = 'onboarding_done';
 
 const slides = [
     {
-        icon: '💊',
-        gradient: ['#0369A1', '#0284C7'] as [string, string],
+        colors: ['#334155', '#475569'] as [string, string],
         title: 'Scan Your Medicine',
         subtitle: 'Point your camera at any prescription or medicine packaging. Our AI instantly identifies it and tells you what you need to know.',
         badge: 'AI-Powered',
-        badgeColor: '#38BDF8',
+        badgeColor: '#94A3B8',
     },
     {
-        icon: '🆘',
-        gradient: ['#DC2626', '#EF4444'] as [string, string],
+        colors: ['#475569', '#334155'] as [string, string],
         title: 'Emergency SOS',
         subtitle: 'One tap sends your GPS location to your emergency contacts. Your Medical ID card is always ready for first responders.',
         badge: 'Always Ready',
         badgeColor: '#FCA5A5',
     },
     {
-        icon: '📋',
-        gradient: ['#059669', '#10B981'] as [string, string],
+        colors: ['#334155', '#475569'] as [string, string],
         title: 'Track Medications',
         subtitle: 'Never miss a dose. Your medication history, daily schedule, and drug interaction alerts — all in one place.',
         badge: 'Stay Safe',
@@ -76,7 +73,7 @@ export default function OnboardingScreen() {
     return (
         <View style={styles.root}>
             <StatusBar barStyle="light-content" />
-            <LinearGradient colors={slide.gradient} style={styles.topHalf}>
+            <LinearGradient colors={slide.colors} style={styles.topHalf}>
                 {/* Skip */}
                 {!isLast && (
                     <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
@@ -84,17 +81,11 @@ export default function OnboardingScreen() {
                     </TouchableOpacity>
                 )}
 
-                {/* Badge */}
                 <Animated.View entering={FadeIn.duration(400)} key={`badge-${current}`} style={styles.badgeWrap}>
                     <View style={[styles.badge, { borderColor: slide.badgeColor }]}>
                         <Text style={[styles.badgeText, { color: slide.badgeColor }]}>{slide.badge}</Text>
                     </View>
                 </Animated.View>
-
-                {/* Icon */}
-                <Animated.Text entering={FadeInUp.duration(500).springify()} key={`icon-${current}`} style={styles.iconText}>
-                    {slide.icon}
-                </Animated.Text>
             </LinearGradient>
 
             {/* Bottom card */}
@@ -112,7 +103,7 @@ export default function OnboardingScreen() {
                             style={[
                                 styles.dot,
                                 i === current
-                                    ? { width: 24, backgroundColor: slide.gradient[0] }
+                                    ? { width: 24, backgroundColor: '#334155' }
                                     : { width: 8, backgroundColor: '#CBD5E1' },
                             ]}
                         />
@@ -121,11 +112,11 @@ export default function OnboardingScreen() {
 
                 {/* CTA */}
                 <TouchableOpacity onPress={handleNext} activeOpacity={0.85}>
-                    <LinearGradient colors={slide.gradient} style={styles.ctaBtn}>
+                    <View style={styles.ctaBtn}>
                         <Text style={styles.ctaText}>
-                            {isLast ? 'Get Started 🚀' : 'Next →'}
+                            {isLast ? 'Get Started' : 'Next'}
                         </Text>
-                    </LinearGradient>
+                    </View>
                 </TouchableOpacity>
 
                 {/* Step text */}
@@ -138,7 +129,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
     root: {
         flex: 1,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: '#F9FAFB',
     },
     topHalf: {
         flex: 1,
@@ -162,34 +153,27 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     badgeWrap: {
-        marginBottom: 20,
+        marginBottom: 12,
     },
     badge: {
         borderWidth: 1.5,
-        borderRadius: 20,
+        borderRadius: 999,
         paddingHorizontal: 14,
         paddingVertical: 5,
+        backgroundColor: 'rgba(15,23,42,0.15)',
     },
     badgeText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
-    iconText: {
-        fontSize: 80,
-    },
     bottomCard: {
         backgroundColor: '#FFF',
         borderTopLeftRadius: 36,
         borderTopRightRadius: 36,
         padding: 32,
         paddingBottom: 48,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        elevation: 8,
     },
     title: {
         fontSize: 26,
         fontWeight: '800',
-        color: '#0F172A',
+        color: '#1E293B',
         letterSpacing: -0.5,
         marginBottom: 12,
     },
@@ -214,6 +198,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         alignItems: 'center',
         marginBottom: 16,
+        backgroundColor: '#334155',
     },
     ctaText: {
         color: '#FFF',

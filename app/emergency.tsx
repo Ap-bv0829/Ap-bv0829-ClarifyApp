@@ -24,7 +24,7 @@ import Animated, {
     useSharedValue,
     withRepeat,
     withSequence,
-    withTiming,
+    withTiming
 } from 'react-native-reanimated';
 import {
     requestSpeechPermission,
@@ -74,6 +74,11 @@ export default function Emergency() {
     const [isSmsAvailable, setIsSmsAvailable] = useState(false);
     const [isSirenActive, setIsSirenActive] = useState(false);
 
+    // Simple reset function for SOS slider
+    const resetSOSSlider = () => {
+        // No-op, can be removed if not used
+    };
+
     // Animation Refs (old Animated API for speech recognition compat)
     const pulseAnim = useRef(new (require('react-native').Animated).Value(1)).current;
     const sirenAnim = useRef(new (require('react-native').Animated).Value(1)).current;
@@ -113,7 +118,6 @@ export default function Emergency() {
 
     const sosGlowStyle = useAnimatedStyle(() => ({
         opacity: sosGlow.value,
-        transform: [{ scale: 1.25 }],
     }));
 
     useEffect(() => {
@@ -366,69 +370,58 @@ export default function Emergency() {
                 </Animated.View>
             )}
 
-            {/* Header */}
-            <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <View style={styles.backBtnCircle}>
-                        <Ionicons name="arrow-back" size={20} color="#FFF" />
-                    </View>
-                </TouchableOpacity>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.title}>Emergency SOS</Text>
-                    <Text style={styles.headerSub}>Safety & Quick Response</Text>
-                </View>
-            </Animated.View>
-
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-                {/* 1. Auto-Detect & Siren Row */}
-                <Animated.View entering={FadeInUp.duration(500).delay(200)} style={styles.controlsRow}>
-                    <TouchableOpacity
-                        style={[styles.controlCard, isListening && styles.controlActive]}
-                        onPress={toggleAutoDetection}
-                        activeOpacity={0.8}
-                    >
-                        <RNAnimated.View style={{ transform: [{ scale: pulseAnim }], marginBottom: 8 }}>
-                            <View style={[styles.controlIconWrap, { backgroundColor: isListening ? 'rgba(255,255,255,0.2)' : '#FEE2E2' }]}>
-                                <Ionicons name={isListening ? "mic" : "mic-off"} size={28} color={isListening ? "#FFF" : "#dc2626"} />
-                            </View>
-                        </RNAnimated.View>
-                        <Text style={[styles.controlTitle, isListening && styles.textWhite]}>Auto-SOS</Text>
-                        <Text style={[styles.controlSub, isListening && styles.textWhiteSub]}>{isListening ? "Listening..." : "Tap to enable"}</Text>
-                    </TouchableOpacity>
+                {/* Hero Header (SOS + controls) */}
+                <View style={styles.stickyHeader}>
+                    {/* 1. Big SOS Button FIRST - Most Important */}
+                    <Animated.View entering={FadeInUp.duration(600).delay(200)} style={styles.sosSection}>
+                        <TouchableOpacity style={styles.sosButton} onPress={() => Linking.openURL('tel:911')} activeOpacity={0.85}>
+                            <View style={styles.sosGlowRing} />
+                            <Animated.View style={[styles.sosInner, sosPulseStyle]}>
+                                <Text style={styles.sosText}>SOS</Text>
+                                <Text style={styles.sosSubtitle}>Tap to call</Text>
+                            </Animated.View>
+                        </TouchableOpacity>
+                    </Animated.View>
 
-                    <TouchableOpacity
-                        style={[styles.controlCard, isSirenActive && styles.sirenActive]}
-                        onPress={() => setIsSirenActive(!isSirenActive)}
-                        activeOpacity={0.8}
-                    >
-                        <RNAnimated.View style={{ transform: [{ scale: sirenAnim }], marginBottom: 8 }}>
-                            <View style={[styles.controlIconWrap, { backgroundColor: isSirenActive ? 'rgba(255,255,255,0.2)' : '#FEE2E2' }]}>
-                                <Ionicons name="megaphone" size={28} color={isSirenActive ? "#FFF" : "#dc2626"} />
-                            </View>
-                        </RNAnimated.View>
-                        <Text style={[styles.controlTitle, isSirenActive && styles.textWhite]}>Loud Siren</Text>
-                        <Text style={[styles.controlSub, isSirenActive && styles.textWhiteSub]}>{isSirenActive ? "🔊 ACTIVE" : "Tap to play"}</Text>
-                    </TouchableOpacity>
-                </Animated.View>
+                    {/* 2. Auto-Detect & Siren Row */}
+                    <Animated.View entering={FadeInUp.duration(500).delay(300)} style={styles.controlsRow}>
+                        <TouchableOpacity
+                            style={[styles.controlCard, isListening && styles.controlActive]}
+                            onPress={toggleAutoDetection}
+                            activeOpacity={0.8}
+                        >
+                            <RNAnimated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                                <View style={[styles.controlIconWrap, { backgroundColor: isListening ? 'rgba(255,255,255,0.2)' : '#F1F5F9' }]}>
+                                    <Ionicons name={isListening ? "mic" : "mic-off"} size={24} color={isListening ? "#FFF" : "#334155"} />
+                                </View>
+                            </RNAnimated.View>
+                            <Text style={[styles.controlTitle, isListening && styles.textWhite]}>Auto-SOS</Text>
+                            <Text style={[styles.controlSub, isListening && styles.textWhiteSub]}>{isListening ? "Listening..." : "Tap to enable"}</Text>
+                        </TouchableOpacity>
 
-                {/* 2. Big SOS Button with heartbeat pulse */}
-                <Animated.View entering={FadeInUp.duration(600).delay(350)} style={styles.sosButtonWrap}>
-                    <TouchableOpacity style={styles.sosButton} onPress={() => Linking.openURL('tel:911')} activeOpacity={0.85}>
-                        <Animated.View style={[styles.sosGlowRing, sosGlowStyle]} />
-                        <Animated.View style={[styles.sosInner, sosPulseStyle]}>
-                            <Text style={styles.sosText}>SOS</Text>
-                            <Text style={styles.sosSub}>CALL 911</Text>
-                        </Animated.View>
-                    </TouchableOpacity>
-                    <Text style={styles.sosHint}>Tap to call emergency services</Text>
-                </Animated.View>
+                        <TouchableOpacity
+                            style={[styles.controlCard, isSirenActive && styles.sirenActive]}
+                            onPress={() => setIsSirenActive(!isSirenActive)}
+                            activeOpacity={0.8}
+                        >
+                            <RNAnimated.View style={{ transform: [{ scale: sirenAnim }] }}>
+                                <View style={[styles.controlIconWrap, { backgroundColor: isSirenActive ? 'rgba(255,255,255,0.2)' : '#F1F5F9' }]}>
+                                    <Ionicons name="megaphone" size={24} color={isSirenActive ? "#FFF" : "#334155"} />
+                                </View>
+                            </RNAnimated.View>
+                            <Text style={[styles.controlTitle, isSirenActive && styles.textWhite]}>Loud Siren</Text>
+                            <Text style={[styles.controlSub, isSirenActive && styles.textWhiteSub]}>{isSirenActive ? "ACTIVE" : "Tap to play"}</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </View>
 
                 {/* 3. Medical ID Card */}
-                <Animated.View entering={FadeInUp.duration(500).delay(450)} style={styles.medicalCard}>
+                <Animated.View entering={FadeInUp.duration(500).delay(400)} style={styles.medicalCard}>
                     <View style={styles.cardHeader}>
                         <View style={styles.headerTitleRow}>
                             <View style={styles.medIconWrap}>
-                                <Ionicons name="medical" size={20} color="#dc2626" />
+                                <Ionicons name="medical" size={20} color="#FB7185" />
                             </View>
                             <Text style={styles.cardTitle}>Medical ID</Text>
                         </View>
@@ -436,7 +429,7 @@ export default function Emergency() {
                             style={styles.editBtnWrap}
                             onPress={isEditingMedical ? saveMedicalInfo : () => setIsEditingMedical(true)}
                         >
-                            <Ionicons name={isEditingMedical ? "checkmark" : "create-outline"} size={16} color="#0369A1" />
+                            <Ionicons name={isEditingMedical ? "checkmark" : "create-outline"} size={14} color="#334155" />
                             <Text style={styles.editBtn}>{isEditingMedical ? 'Save' : 'Edit'}</Text>
                         </TouchableOpacity>
                     </View>
@@ -495,16 +488,16 @@ export default function Emergency() {
                 </Animated.View>
 
                 {/* 4. Emergency Contacts */}
-                <Animated.View entering={FadeInUp.duration(500).delay(550)} style={styles.section}>
+                <Animated.View entering={FadeInUp.duration(500).delay(500)} style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <Ionicons name="people" size={20} color="#1F2937" />
                             <Text style={styles.sectionTitle}>Emergency Contacts</Text>
                         </View>
                         <TouchableOpacity style={styles.addButton} onPress={() => setIsAddingContact(!isAddingContact)}>
-                            <Ionicons name={isAddingContact ? "close" : "add"} size={16} color={isAddingContact ? "#DC2626" : "#FFF"} />
-                            <Text style={[styles.addButtonText, isAddingContact && { color: '#DC2626' }]}>
-                                {isAddingContact ? 'Cancel' : 'Add'}
+                            <Ionicons name={isAddingContact ? "close" : "add"} size={16} color="#FFF" />
+                            <Text style={styles.addButtonText}>
+                                {isAddingContact ? 'Cancel' : 'Add New'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -538,7 +531,7 @@ export default function Emergency() {
                                     <Text style={styles.contactPhone}>{contact.phone}</Text>
                                 </View>
                                 <View style={styles.callBtnCircle}>
-                                    <Ionicons name="call" size={18} color="#FFF" />
+                                    <Ionicons name="call" size={18} color="#334155" />
                                 </View>
                             </TouchableOpacity>
                         </Animated.View>
@@ -560,161 +553,148 @@ export default function Emergency() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#0369A1" />
+            <StatusBar barStyle="dark-content" />
             {Content}
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 20,
-        paddingTop: 16,
-        gap: 12,
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 0,
-        shadowColor: '#000',
-        shadowOpacity: 0.03,
-        shadowRadius: 4,
-        shadowOffset: { height: 1, width: 0 },
-        elevation: 1,
-    },
-    backButton: {},
-    backBtnCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: '#F1F5F9',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#0F172A',
-        letterSpacing: -0.3,
-    },
-    headerSub: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#64748B',
-        marginTop: 2,
-    },
+    container: { flex: 1, backgroundColor: '#F9FAFB' },
     content: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
+        backgroundColor: '#F9FAFB',
     },
-    contentContainer: { padding: 20, paddingBottom: 50 },
+    contentContainer: { padding: 24, paddingBottom: 120, paddingTop: 10 },
+    stickyHeader: {
+        backgroundColor: '#F9FAFB',
+        paddingTop: 10,
+        paddingBottom: 20,
+    },
 
-    // Controls Row
-    controlsRow: { flexDirection: 'row', gap: 14, marginBottom: 40 },
-    controlCard: {
-        flex: 1,
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 16,
+    // SOS Section
+    sosSection: {
+        alignItems: 'center',
+        marginBottom: 80,
+    },
+    sosButton: {
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 0,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        shadowOffset: { height: 1, width: 0 },
-        elevation: 1,
+        position: 'relative',
     },
-    controlActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
-    sirenActive: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
-    controlIconWrap: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 10,
-    },
-    controlTitle: { fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
-    controlSub: { fontSize: 12, fontWeight: '500', color: '#9CA3AF' },
-    textWhite: { color: '#FFF' },
-    textWhiteSub: { color: 'rgba(255,255,255,0.8)' },
-
-    // SOS Button
-    sosButtonWrap: { alignItems: 'center', marginBottom: 32, marginTop: 8 },
-    sosButton: { alignItems: 'center', justifyContent: 'center' },
     sosGlowRing: {
         position: 'absolute',
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: 'transparent',
-        borderWidth: 6,
-        borderColor: '#dc2626',
+        width: 170,
+        height: 170,
+        borderRadius: 85,
+        backgroundColor: 'rgba(239, 68, 68, 0.05)',
     },
     sosInner: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#dc2626',
+        width: 144,
+        height: 144,
+        borderRadius: 72,
+        backgroundColor: '#EF4444',
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 8,
-        borderWidth: 0,
-        shadowColor: '#dc2626',
+        shadowColor: '#EF4444',
         shadowOpacity: 0.3,
-        shadowRadius: 12,
-        shadowOffset: { height: 3, width: 0 },
+        shadowRadius: 15,
+        shadowOffset: { height: 6, width: 0 },
+        elevation: 12,
+        zIndex: 10,
     },
-    sosText: { fontSize: 28, fontWeight: '800', color: '#FFF', letterSpacing: 1 },
-    sosSub: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-    sosHint: { fontSize: 13, color: '#64748B', marginTop: 20, fontWeight: '500' },
+    sosText: {
+        fontSize: 44,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 1.5,
+        marginBottom: 2,
+    },
+    sosSubtitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.9)',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+
+    // Controls Row
+    controlsRow: { flexDirection: 'row', gap: 16, marginBottom: 32 },
+    controlCard: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOpacity: 0.02,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    controlActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
+    sirenActive: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+    controlIconWrap: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    controlTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+    controlSub: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+    textWhite: { color: '#FFF' },
+    textWhiteSub: { color: 'rgba(255,255,255,0.85)' },
 
     // Medical ID
     medicalCard: {
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 18,
-        marginBottom: 24,
-        borderWidth: 0,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 32,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
         shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        shadowOffset: { height: 1, width: 0 },
-        elevation: 1,
+        shadowOpacity: 0.02,
+        shadowRadius: 10,
+        elevation: 2,
     },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     medIconWrap: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#FEE2E2',
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: '#FEF2F2',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
+    cardTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', letterSpacing: -0.5 },
     editBtnWrap: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#EFF6FF',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 18,
+        gap: 6,
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
-    editBtn: { color: '#0369A1', fontWeight: '600', fontSize: 12 },
+    editBtn: { color: '#334155', fontWeight: '700', fontSize: 14 },
     medicalForm: { gap: 12 },
     medInput: {
         backgroundColor: '#F8FAFC',
-        padding: 14,
-        borderRadius: 14,
+        padding: 16,
+        borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        fontSize: 15,
-        color: '#1F2937',
+        borderColor: '#F1F5F9',
+        fontSize: 16,
+        color: '#1E293B',
+        fontWeight: '500',
     },
     medicalDisplay: { gap: 0 },
     medRow: {
@@ -722,132 +702,151 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-        paddingVertical: 12,
+        borderBottomColor: '#F8FAFC',
+        paddingVertical: 18,
     },
-    medRowBlock: { paddingTop: 12 },
-    medLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    medLabel: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
-    medValue: { fontSize: 15, fontWeight: '700', color: '#111827' },
-    bloodTypeBold: { color: '#DC2626', fontSize: 17, fontWeight: '800' },
+    medRowBlock: { paddingTop: 18 },
+    medLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    medLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5 },
+    medValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
+    bloodTypeBold: { color: '#EF4444', fontSize: 18, fontWeight: '900' },
 
     // Contacts
-    section: { marginBottom: 24 },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+    section: { marginBottom: 20 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    sectionTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', letterSpacing: -0.5 },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#0369A1',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
+        gap: 6,
+        backgroundColor: '#334155',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
     },
-    addButtonText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+    addButtonText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
     addForm: {
-        backgroundColor: '#FFF',
-        padding: 18,
-        borderRadius: 22,
-        marginBottom: 16,
+        backgroundColor: '#FFFFFF',
+        padding: 24,
+        borderRadius: 24,
+        marginBottom: 20,
         gap: 12,
         borderWidth: 1,
         borderColor: '#F1F5F9',
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        shadowOffset: { height: 2, width: 0 },
-        elevation: 2,
     },
     input: {
         backgroundColor: '#F8FAFC',
-        padding: 14,
-        borderRadius: 14,
+        padding: 16,
+        borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        fontSize: 15,
-        color: '#1F2937',
+        borderColor: '#F1F5F9',
+        fontSize: 16,
+        color: '#1E293B',
+        fontWeight: '500',
     },
     saveButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
-        backgroundColor: '#10b981',
-        padding: 14,
-        borderRadius: 14,
+        gap: 10,
+        backgroundColor: '#334155',
+        padding: 16,
+        borderRadius: 16,
+        marginTop: 8,
     },
-    saveButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
+    saveButtonText: { color: '#FFF', fontWeight: '800', fontSize: 16 },
     contactCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF',
-        padding: 14,
-        borderRadius: 18,
-        marginBottom: 10,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        shadowOffset: { height: 2, width: 0 },
+        backgroundColor: '#FFFFFF',
+        padding: 18,
+        borderRadius: 24,
+        marginBottom: 12,
         borderWidth: 1,
         borderColor: '#F1F5F9',
     },
     contactIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 16,
-        backgroundColor: '#0369A1',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#F1F5F9',
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 14,
+        marginRight: 16,
     },
     contactInitial: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-        color: '#FFF',
+        color: '#334155',
     },
     contactInfo: { flex: 1 },
-    contactName: { fontSize: 16, fontWeight: '700', color: '#111827' },
-    contactPhone: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+    contactName: { fontSize: 17, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+    contactPhone: { fontSize: 14, fontWeight: '600', color: '#64748B' },
     callBtnCircle: {
-        width: 38,
-        height: 38,
-        borderRadius: 14,
-        backgroundColor: '#10b981',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F1F5F9',
         alignItems: 'center',
         justifyContent: 'center',
     },
     emptyContactState: {
         alignItems: 'center',
-        paddingVertical: 32,
-        gap: 6,
+        justifyContent: 'center',
+        paddingVertical: 40,
     },
-    emptyText: { fontSize: 16, fontWeight: '600', color: '#94A3B8', marginTop: 8 },
-    emptySubText: { fontSize: 13, color: '#CBD5E1', textAlign: 'center' },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#475569',
+        marginTop: 12,
+    },
+    emptySubText: {
+        fontSize: 14,
+        color: '#94A3B8',
+        textAlign: 'center',
+        marginTop: 4,
+        paddingHorizontal: 40,
+    },
 
     // Countdown Overlay
     countdownOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(220, 38, 38, 0.97)',
+        backgroundColor: '#EF4444',
         zIndex: 100,
         alignItems: 'center',
         justifyContent: 'center',
+        padding: 20,
     },
-    countdownTitle: { fontSize: 22, fontWeight: '800', color: '#FFF', marginBottom: 4, letterSpacing: 1 },
-    countdownSub: { fontSize: 18, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
-    countdownNumber: { fontSize: 100, fontWeight: '900', color: '#FFF', letterSpacing: 4 },
+    countdownTitle: {
+        fontSize: 24,
+        fontWeight: '900',
+        color: '#FFF',
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    countdownSub: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.9)',
+        marginBottom: 20,
+    },
+    countdownNumber: {
+        fontSize: 100,
+        fontWeight: '900',
+        color: '#FFF',
+        marginBottom: 40,
+    },
     cancelButton: {
         backgroundColor: '#FFF',
-        paddingHorizontal: 44,
-        paddingVertical: 16,
-        borderRadius: 100,
-        marginTop: 32,
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        shadowOffset: { height: 4, width: 0 },
-        elevation: 4,
+        paddingHorizontal: 40,
+        paddingVertical: 20,
+        borderRadius: 20,
     },
-    cancelButtonText: { fontSize: 18, fontWeight: '800', color: '#dc2626', letterSpacing: 0.5 },
+    cancelButtonText: {
+        color: '#EF4444',
+        fontSize: 18,
+        fontWeight: '900',
+        letterSpacing: 1,
+    }
 });

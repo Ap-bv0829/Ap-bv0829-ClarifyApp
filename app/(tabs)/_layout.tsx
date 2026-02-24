@@ -9,7 +9,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#0369A1',
+        tabBarActiveTintColor: '#334155',
         tabBarInactiveTintColor: '#94A3B8',
         headerShown: false,
         tabBarStyle: styles.tabBar,
@@ -28,9 +28,25 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="scan-history"
         options={{
-          href: null, // Hide from tab bar
+          title: 'History',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <Ionicons name={focused ? 'time' : 'time-outline'} size={22} color={color} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="emergency"
+        options={{
+          title: 'SOS',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <Ionicons name={focused ? 'alert' : 'alert-outline'} size={22} color={color} />
+            </View>
+          ),
         }}
       />
     </Tabs>
@@ -40,12 +56,13 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 0,
-    elevation: 20,
-    shadowColor: '#0369A1',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    elevation: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 10,
     height: Platform.OS === 'ios' ? 88 : 64,
     paddingBottom: Platform.OS === 'ios' ? 28 : 8,
     paddingTop: 8,
@@ -70,6 +87,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   iconWrapActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F1F5F9',
   },
 });

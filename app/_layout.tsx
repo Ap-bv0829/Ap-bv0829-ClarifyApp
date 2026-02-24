@@ -38,7 +38,7 @@ export default function RootLayout() {
     }
   };
 
-  if (!ready) return <View style={{ flex: 1, backgroundColor: '#0369A1' }} />;
+  if (!ready) return <View style={{ flex: 1, backgroundColor: '#F9FAFB' }} />;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -49,7 +49,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="scan-history" options={{ headerShown: false }} />
         <Stack.Screen name="pharmacy-finder" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="medicine-details" options={{ presentation: 'modal', title: 'Medicine Details' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

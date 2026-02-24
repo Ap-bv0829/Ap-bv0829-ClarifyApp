@@ -27,35 +27,35 @@ interface Pharmacy {
 const PHARMACIES: Pharmacy[] = [
     {
         name: 'Mercury Drug',
-        icon: '🔴',
+        icon: 'medical',
         color: '#DC2626',
         description: 'Largest pharmacy chain in the Philippines',
         hotline: '028888-5797',
     },
     {
         name: 'Watsons',
-        icon: '🔵',
+        icon: 'medkit',
         color: '#0369A1',
         description: 'Health, beauty & wellness products',
         hotline: '028858-5071',
     },
     {
         name: 'Rose Pharmacy',
-        icon: '🌹',
+        icon: 'heart',
         color: '#DB2777',
         description: 'Trusted pharmacy since 1952',
         hotline: '032253-9100',
     },
     {
         name: 'Generika',
-        icon: '💚',
+        icon: 'leaf',
         color: '#059669',
         description: 'Affordable generic medicines',
         hotline: '028702-5000',
     },
     {
         name: 'The Generics Pharmacy',
-        icon: '🏥',
+        icon: 'business',
         color: '#7C3AED',
         description: 'Quality generics at low prices',
         hotline: '028888-0000',
@@ -67,6 +67,7 @@ const PHARMACIES: Pharmacy[] = [
 export default function PharmacyFinderScreen() {
     const router = useRouter();
     const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [address, setAddress] = useState<string>('');
     const [locationStatus, setLocationStatus] = useState<'loading' | 'ready' | 'denied' | 'idle'>('idle');
 
     useEffect(() => { getLocation(); }, []);
@@ -80,7 +81,28 @@ export default function PharmacyFinderScreen() {
                 return;
             }
             const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-            setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+            const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+            setLocation(coords);
+
+            // Reverse geocode
+            try {
+                const geo = await Location.reverseGeocodeAsync({
+                    latitude: loc.coords.latitude,
+                    longitude: loc.coords.longitude
+                });
+                if (geo && geo.length > 0) {
+                    const place = geo[0];
+                    const street = place.street || '';
+                    const district = place.district || place.subregion || '';
+                    const city = place.city || '';
+                    setAddress(`${street ? street + ', ' : ''}${district ? district + ', ' : ''}${city}`);
+                } else {
+                    setAddress(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+                }
+            } catch {
+                setAddress(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+            }
+
             setLocationStatus('ready');
         } catch {
             setLocationStatus('denied');
@@ -108,10 +130,10 @@ export default function PharmacyFinderScreen() {
 
     const Content = (
         <>
-            <StatusBar barStyle="light-content" backgroundColor="#059669" />
+            <StatusBar barStyle="light-content" backgroundColor="#0369A1" />
 
             {/* Header */}
-            <LinearGradient colors={['#059669', '#10B981']} style={styles.header}>
+            <LinearGradient colors={['#0369A1', '#0EA5E9']} style={styles.header}>
                 <View style={styles.headerRow}>
                     <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
                         <View style={styles.headerBtn}>
@@ -124,15 +146,8 @@ export default function PharmacyFinderScreen() {
                     </View>
                 </View>
 
-                {/* Location status card */}
+                {/* Location status */}
                 <View style={styles.locationCard}>
-                    <View style={styles.locationIcon}>
-                        <Ionicons
-                            name={locationStatus === 'ready' ? 'location' : locationStatus === 'loading' ? 'time-outline' : 'location-outline'}
-                            size={20}
-                            color={locationStatus === 'ready' ? '#059669' : '#64748B'}
-                        />
-                    </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.locationTitle}>
                             {locationStatus === 'ready' ? 'Location Found ✓' :
@@ -142,7 +157,7 @@ export default function PharmacyFinderScreen() {
                         </Text>
                         <Text style={styles.locationSub}>
                             {locationStatus === 'ready'
-                                ? `${location!.lat.toFixed(4)}, ${location!.lng.toFixed(4)}`
+                                ? (address || 'Searching nearby...')
                                 : 'Will search Philippines-wide'}
                         </Text>
                     </View>
@@ -163,7 +178,7 @@ export default function PharmacyFinderScreen() {
                         onPress={() => openMapsSearch('pharmacy')}
                         activeOpacity={0.85}
                     >
-                        <LinearGradient colors={['#059669', '#10B981']} style={styles.nearbyBtnInner}>
+                        <LinearGradient colors={['#0369A1', '#0EA5E9']} style={styles.nearbyBtnInner}>
                             <Ionicons name="navigate" size={22} color="#FFF" />
                             <Text style={styles.nearbyBtnText}>Find Nearest Pharmacy Now</Text>
                         </LinearGradient>
@@ -174,7 +189,7 @@ export default function PharmacyFinderScreen() {
                 <Animated.View entering={FadeInUp.duration(400).delay(100)}>
                     <TouchableOpacity style={styles.dohCard} onPress={openDOH} activeOpacity={0.85}>
                         <View style={styles.dohIcon}>
-                            <Text style={{ fontSize: 28 }}>🏛️</Text>
+                            <Ionicons name="call" size={24} color="#059669" />
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.dohTitle}>DOH Hotline</Text>
@@ -196,7 +211,7 @@ export default function PharmacyFinderScreen() {
                     <Animated.View key={pharmacy.name} entering={FadeInUp.duration(400).delay(200 + index * 80)}>
                         <View style={styles.pharmacyCard}>
                             <View style={[styles.pharmacyIconWrap, { backgroundColor: pharmacy.color + '15' }]}>
-                                <Text style={{ fontSize: 28 }}>{pharmacy.icon}</Text>
+                                <Ionicons name={pharmacy.icon as any} size={24} color={pharmacy.color} />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.pharmacyName}>{pharmacy.name}</Text>
@@ -225,7 +240,9 @@ export default function PharmacyFinderScreen() {
                 {/* Senior discount note */}
                 <Animated.View entering={FadeInUp.duration(400).delay(700)}>
                     <View style={styles.noteCard}>
-                        <Text style={styles.noteIcon}>👴</Text>
+                        <View style={styles.noteIconWrap}>
+                            <Ionicons name="information-circle" size={24} color="#059669" />
+                        </View>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.noteTitle}>Senior Citizen Discount</Text>
                             <Text style={styles.noteText}>
@@ -242,7 +259,7 @@ export default function PharmacyFinderScreen() {
 
     return (
         <SafeAreaView style={styles.root}>
-            <StatusBar barStyle="light-content" backgroundColor="#059669" />
+            <StatusBar barStyle="light-content" backgroundColor="#0369A1" />
             {Content}
         </SafeAreaView>
     );
@@ -261,8 +278,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center', justifyContent: 'center',
     },
-    headerTitle: { fontSize: moderateScale(20), fontWeight: '800', color: '#FFF' },
-    headerSub: { fontSize: moderateScale(12), color: 'rgba(255,255,255,0.75)', fontWeight: '500', marginTop: 2 },
+    headerTitle: { fontSize: moderateScale(22), fontWeight: '800', color: '#FFF' },
+    headerSub: { fontSize: moderateScale(14), color: 'rgba(255,255,255,0.75)', fontWeight: '600', marginTop: 2 },
     locationCard: {
         flexDirection: 'row', alignItems: 'center', gap: scale(12),
         backgroundColor: '#FFF', borderRadius: 16,
@@ -272,56 +289,56 @@ const styles = StyleSheet.create({
         width: scale(40), height: scale(40), borderRadius: 12,
         backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
     },
-    locationTitle: { fontSize: moderateScale(14), fontWeight: '700', color: '#0F172A' },
-    locationSub: { fontSize: moderateScale(11), color: '#64748B', marginTop: 2 },
-    retryText: { color: '#059669', fontWeight: '700', fontSize: moderateScale(13) },
+    locationTitle: { fontSize: moderateScale(15), fontWeight: '700', color: '#0F172A' },
+    locationSub: { fontSize: moderateScale(14), color: '#64748B', marginTop: 2, fontWeight: '500' },
+    retryText: { color: '#059669', fontWeight: '800', fontSize: moderateScale(14) },
     body: { flex: 1 },
-    bodyContent: { padding: scale(16) },
+    bodyContent: { paddingHorizontal: scale(20), paddingVertical: verticalScale(16) },
     nearbyBtn: { marginBottom: verticalScale(12), borderRadius: 18, overflow: 'hidden' },
     nearbyBtnInner: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: scale(10), paddingVertical: verticalScale(18),
     },
-    nearbyBtnText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(16) },
+    nearbyBtnText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(16), letterSpacing: 0.5 },
     dohCard: {
         flexDirection: 'row', alignItems: 'center', gap: scale(12),
-        backgroundColor: '#FFF', borderRadius: 18, padding: scale(16),
+        backgroundColor: '#FFF', borderRadius: 24, padding: scale(16),
         marginBottom: verticalScale(20),
         borderWidth: 1, borderColor: '#DCFCE7',
-        shadowColor: '#059669', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+        shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08, shadowRadius: 16, elevation: 4,
     },
     dohIcon: {
         width: scale(52), height: scale(52), borderRadius: 16,
         backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
     },
     dohTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#0F172A' },
-    dohSub: { fontSize: moderateScale(12), color: '#059669', fontWeight: '600', marginTop: 2 },
-    dohDesc: { fontSize: moderateScale(11), color: '#64748B', marginTop: 2 },
+    dohSub: { fontSize: moderateScale(14), color: '#059669', fontWeight: '700', marginTop: 2 },
+    dohDesc: { fontSize: moderateScale(14), color: '#64748B', marginTop: 2, fontWeight: '500' },
     callBadge: {
         flexDirection: 'row', alignItems: 'center', gap: 4,
         backgroundColor: '#059669', paddingHorizontal: scale(12),
         paddingVertical: verticalScale(7), borderRadius: 10,
     },
-    callBadgeText: { color: '#FFF', fontWeight: '700', fontSize: moderateScale(12) },
+    callBadgeText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(14) },
     sectionLabel: {
-        fontSize: moderateScale(11), fontWeight: '800', color: '#94A3B8',
+        fontSize: moderateScale(14), fontWeight: '800', color: '#94A3B8',
         letterSpacing: 1.2, marginBottom: verticalScale(10), marginLeft: scale(4),
     },
     pharmacyCard: {
         flexDirection: 'row', alignItems: 'center', gap: scale(12),
-        backgroundColor: '#FFF', borderRadius: 18, padding: scale(14),
-        marginBottom: verticalScale(10),
+        backgroundColor: '#FFF', borderRadius: 24, padding: scale(16),
+        marginBottom: verticalScale(12),
         borderWidth: 1, borderColor: '#F1F5F9',
-        shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+        shadowColor: '#64748B', shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06, shadowRadius: 16, elevation: 4,
     },
     pharmacyIconWrap: {
         width: scale(52), height: scale(52), borderRadius: 16,
         alignItems: 'center', justifyContent: 'center',
     },
-    pharmacyName: { fontSize: moderateScale(15), fontWeight: '700', color: '#0F172A' },
-    pharmacyDesc: { fontSize: moderateScale(11), color: '#64748B', marginTop: 2 },
+    pharmacyName: { fontSize: moderateScale(16), fontWeight: '700', color: '#0F172A' },
+    pharmacyDesc: { fontSize: moderateScale(14), color: '#64748B', marginTop: 2, fontWeight: '500' },
     pharmacyActions: { flexDirection: 'row', gap: scale(8) },
     actionBtn: {
         width: scale(36), height: scale(36), borderRadius: 10,
@@ -332,7 +349,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#F0FDF4', borderRadius: 18, padding: scale(16),
         borderWidth: 1.5, borderColor: '#BBF7D0', marginTop: 4,
     },
-    noteIcon: { fontSize: 32 },
-    noteTitle: { fontSize: moderateScale(14), fontWeight: '800', color: '#065F46', marginBottom: 6 },
-    noteText: { fontSize: moderateScale(13), color: '#047857', lineHeight: 20 },
+    noteIconWrap: {
+        width: scale(44), height: scale(44), borderRadius: 14,
+        backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center',
+    },
+    noteTitle: { fontSize: moderateScale(15), fontWeight: '800', color: '#065F46', marginBottom: 6 },
+    noteText: { fontSize: moderateScale(14), color: '#047857', lineHeight: 22, fontWeight: '500' },
 });

@@ -31,6 +31,8 @@ export default function ScanHistoryScreen() {
     const [filterBy, setFilterBy] = useState<FilterType>('all');
     const [favorites, setFavorites] = useState<string[]>([]);
     const [contextMenuId, setContextMenuId] = useState<string | null>(null);
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     useEffect(() => { load(); }, []);
 
@@ -196,6 +198,10 @@ export default function ScanHistoryScreen() {
         );
     };
 
+    const toggleSelect = (scanId: string) => {
+        setSelectedIds(prev => prev.includes(scanId) ? prev.filter(id => id !== scanId) : [...prev, scanId]);
+    };
+
     return (
         <SafeAreaView style={styles.root}>
             <StatusBar barStyle="dark-content" />
@@ -209,16 +215,40 @@ export default function ScanHistoryScreen() {
                         </View>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Scan History</Text>
-                        <Text style={styles.headerSub}>{scans.length} scan{scans.length !== 1 ? 's' : ''} saved</Text>
+                        <Text style={styles.headerTitle}>{isSelectionMode ? 'Select Medicines' : 'Scan History'}</Text>
+                        <Text style={styles.headerSub}>
+                            {isSelectionMode 
+                                ? `${selectedIds.length} selected for comparison` 
+                                : `${scans.length} scan${scans.length !== 1 ? 's' : ''} saved`}
+                        </Text>
                     </View>
-                    {scans.length > 0 && (
-                        <TouchableOpacity onPress={handleClearAll} activeOpacity={0.7}>
-                            <View style={styles.headerBtn}>
-                                <MaterialIcons name="delete-outline" size={22} color="#EF4444" />
-                            </View>
-                        </TouchableOpacity>
-                    )}
+                    <View style={{ flexDirection: 'row', gap: 4 }}>
+                        {scans.length > 0 && !isSelectionMode && (
+                            <TouchableOpacity onPress={() => setIsSelectionMode(true)} activeOpacity={0.7}>
+                                <View style={[styles.headerBtn, { backgroundColor: 'transparent', width: scale(40) }]}>
+                                    <View style={{ backgroundColor: '#DBEAFE', padding: 8, borderRadius: 12 }}>
+                                        <MaterialIcons name="library-add-check" size={20} color="#3B82F6" />
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                        {scans.length > 0 && !isSelectionMode && (
+                            <TouchableOpacity onPress={handleClearAll} activeOpacity={0.7}>
+                                <View style={[styles.headerBtn, { backgroundColor: 'transparent', width: scale(40) }]}>
+                                    <View style={{ backgroundColor: '#FEE2E2', padding: 8, borderRadius: 12 }}>
+                                        <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                        {isSelectionMode && (
+                            <TouchableOpacity onPress={() => { setIsSelectionMode(false); setSelectedIds([]); }} activeOpacity={0.7}>
+                                <View style={[styles.headerBtn, { backgroundColor: 'transparent' }]}>
+                                    <Text style={{ fontSize: moderateScale(15), color: '#64748B', fontWeight: '600' }}>Cancel</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
             </View>
 
@@ -331,6 +361,7 @@ export default function ScanHistoryScreen() {
                             const subtitle = meds.length > 1
                                 ? meds.map(m => m.medicineName).join(', ')
                                 : primary.commonUses;
+                            const isSelected = selectedIds.includes(scan.id);
 
                             return (
                                 <Animated.View
@@ -372,9 +403,13 @@ export default function ScanHistoryScreen() {
 
                                     <TouchableOpacity
                                         activeOpacity={0.75}
-                                        onLongPress={() => setContextMenuId(contextMenuId === scan.id ? null : scan.id)}
+                                        onLongPress={() => {
+                                            if (!isSelectionMode) setContextMenuId(contextMenuId === scan.id ? null : scan.id);
+                                        }}
                                         onPress={() => {
-                                            if (contextMenuId !== scan.id) {
+                                            if (isSelectionMode) {
+                                                toggleSelect(scan.id);
+                                            } else if (contextMenuId !== scan.id) {
                                                 router.push({
                                                     pathname: '/medicine-details',
                                                     params: {
@@ -385,7 +420,7 @@ export default function ScanHistoryScreen() {
                                             }
                                         }}
                                     >
-                                        <View style={[styles.card, isFavorite && styles.cardFavorited]}>
+                                        <View style={[styles.card, isFavorite && !isSelectionMode && styles.cardFavorited, isSelected && styles.cardSelected]}>
                                             <View style={styles.cardBody}>
                                                 <View style={styles.cardTop}>
                                                     <View style={{ flex: 1 }}>
@@ -399,18 +434,18 @@ export default function ScanHistoryScreen() {
                                                     </View>
 
                                                     <View style={styles.cardActions}>
-                                                        <TouchableOpacity
-                                                            style={styles.actionBtn}
-                                                            onPress={() => toggleFavorite(scan.id)}
-                                                        >
-                                                            <MaterialIcons name={isFavorite ? "star" : "star-outline"} size={22} color={isFavorite ? "#F59E0B" : "#CBD5E1"} />
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={styles.actionBtn}
-                                                            onPress={() => handleDeleteScan(scan.id)}
-                                                        >
-                                                            <MaterialIcons name="delete-outline" size={22} color="#EF4444" />
-                                                        </TouchableOpacity>
+                                                        {isSelectionMode ? (
+                                                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                                                {isSelected && <MaterialIcons name="check" size={16} color="#FFF" />}
+                                                            </View>
+                                                        ) : (
+                                                            <TouchableOpacity
+                                                                style={styles.actionBtn}
+                                                                onPress={() => toggleFavorite(scan.id)}
+                                                            >
+                                                                <MaterialIcons name={isFavorite ? "star" : "star-outline"} size={22} color={isFavorite ? "#F59E0B" : "#CBD5E1"} />
+                                                            </TouchableOpacity>
+                                                        )}
                                                     </View>
                                                 </View>
 
@@ -436,13 +471,16 @@ export default function ScanHistoryScreen() {
                                                 <View style={styles.medicineList}>
                                                     {meds.map((m, i) => (
                                                         <View key={i} style={styles.medicineRow}>
-                                                            <View style={styles.medicineBullet} />
-                                                            <Text style={styles.medicineNameText} numberOfLines={1}>
-                                                                {m.medicineName}
-                                                            </Text>
-                                                            {m.dosage && (
-                                                                <Text style={styles.medicineDosageText}> • {m.dosage}</Text>
-                                                            )}
+                                                            <View style={styles.medicineTextContainer}>
+                                                                <Text style={styles.medicineNameText}>
+                                                                    {m.medicineName}
+                                                                </Text>
+                                                                {m.dosage && (
+                                                                    <Text style={styles.medicineDosageText}>
+                                                                        {m.dosage}
+                                                                    </Text>
+                                                                )}
+                                                            </View>
                                                         </View>
                                                     ))}
                                                 </View>
@@ -475,8 +513,28 @@ export default function ScanHistoryScreen() {
                         })}
                     </>
                 )}
-                <View style={{ height: verticalScale(32) }} />
+                {/* Bottom Padding for scroll */}
+                <View style={{ height: verticalScale(100) }} />
             </ScrollView>
+
+            {/* Floating Action Button for Selection Mode */}
+            {isSelectionMode && selectedIds.length >= 2 && (
+                <View style={styles.fabContainer}>
+                    <TouchableOpacity 
+                        style={styles.fab} 
+                        activeOpacity={0.8}
+                        onPress={() => {
+                            router.push({
+                                pathname: '/interaction-result',
+                                params: { ids: JSON.stringify(selectedIds) }
+                            });
+                        }}
+                    >
+                        <MaterialIcons name="health-and-safety" size={24} color="#FFF" />
+                        <Text style={styles.fabText}>Check {selectedIds.length} Medicines</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -520,13 +578,17 @@ const styles = StyleSheet.create({
     scanBtnText: { color: '#FFF', fontWeight: '700', fontSize: moderateScale(16) },
     card: {
         flexDirection: 'row',
-        backgroundColor: '#FFF',
-        borderRadius: 20,
-        marginHorizontal: scale(16),
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        marginHorizontal: scale(20),
         marginBottom: verticalScale(16),
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        // Softer elevated shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 12,
+        elevation: 2,
     },
     accent: { width: 7, alignSelf: 'stretch', display: 'none' }, // Deprecated bulky bar
     severityDot: {
@@ -534,24 +596,41 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: 4,
     },
-    cardBody: { flex: 1, padding: scale(16) },
+    cardBody: { flex: 1, padding: scale(20) },
     cardThumb: { display: 'none' },
     cardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
-    cardTitle: { fontSize: moderateScale(18), fontWeight: '800', color: '#1E293B', flexShrink: 1, letterSpacing: -0.3 },
-    cardDate: { fontSize: moderateScale(13), color: '#94A3B8', marginTop: 2, fontWeight: '600' },
+    cardTitle: { fontSize: moderateScale(17), fontWeight: '700', color: '#1E293B', flexShrink: 1, letterSpacing: -0.2 },
+    cardDate: { fontSize: moderateScale(13), color: '#94A3B8', marginTop: 4, fontWeight: '500' },
     cardSub: { fontSize: moderateScale(14), color: '#64748B', lineHeight: 22, marginTop: 12 },
     countBadge: {
         paddingHorizontal: scale(10), paddingVertical: 4,
         borderRadius: 10,
     },
-    countBadgeText: { fontSize: moderateScale(14), fontWeight: '700', color: '#334155' },
+    countBadgeText: { fontSize: moderateScale(13), fontWeight: '700', color: '#475569' },
 
     // Sleek medicine list
-    medicineList: { marginTop: 10, gap: 8 },
-    medicineRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    medicineBullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#CBD5E1' },
-    medicineNameText: { fontSize: moderateScale(15), fontWeight: '600', color: '#334155', flexShrink: 1 },
-    medicineDosageText: { fontSize: moderateScale(14), color: '#64748B', fontWeight: '500' },
+    medicineList: { marginTop: 12, gap: 10 },
+    medicineRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#F8FAFC',
+        padding: scale(12),
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    medicineTextContainer: { flex: 1, gap: 2 },
+    medicineNameText: {
+        fontSize: moderateScale(15),
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    medicineDosageText: {
+        fontSize: moderateScale(14),
+        color: '#64748B',
+        fontWeight: '500',
+        lineHeight: 20,
+    },
 
     alertsContainer: { marginTop: 6 },
     warningRow: {
@@ -571,15 +650,15 @@ const styles = StyleSheet.create({
     searchSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF',
-        marginHorizontal: scale(16),
-        marginTop: verticalScale(8),
-        marginBottom: verticalScale(8),
+        backgroundColor: '#FFFFFF',
+        marginHorizontal: scale(20),
+        marginTop: verticalScale(4),
+        marginBottom: verticalScale(12),
         paddingHorizontal: scale(16),
         borderRadius: 16,
         height: verticalScale(52),
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
     },
     searchIcon: { marginRight: scale(10) },
     searchInput: {
@@ -593,45 +672,46 @@ const styles = StyleSheet.create({
     filterRow: {
         flexDirection: 'row',
         gap: scale(10),
-        paddingHorizontal: scale(16),
-        marginBottom: verticalScale(12),
+        paddingHorizontal: scale(20),
+        marginBottom: verticalScale(16),
     },
     filterBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: scale(6),
-        paddingHorizontal: scale(14),
+        paddingHorizontal: scale(16),
         paddingVertical: verticalScale(8),
         borderRadius: 12,
-        backgroundColor: '#FFF',
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
     },
     filterBtnActive: {
         backgroundColor: '#F1F5F9',
-        borderColor: '#334155',
+        borderColor: '#94A3B8',
     },
     filterBtnText: {
         fontSize: moderateScale(13),
-        fontWeight: '700',
+        fontWeight: '600',
         color: '#64748B',
     },
     filterBtnTextActive: {
         color: '#334155',
+        fontWeight: '700',
     },
 
     // Stats Card
     statsCard: {
         flexDirection: 'row',
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        marginHorizontal: scale(16),
-        marginBottom: verticalScale(16),
-        height: verticalScale(48),
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        marginHorizontal: scale(20),
+        marginBottom: verticalScale(20),
+        height: verticalScale(56),
         paddingHorizontal: scale(12),
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
     statItem: {
         flex: 1,
@@ -647,18 +727,18 @@ const styles = StyleSheet.create({
     },
     statDivider: {
         width: 1,
-        height: '30%',
+        height: '40%',
         backgroundColor: '#F1F5F9',
     },
     statNumber: {
-        fontSize: moderateScale(16),
-        fontWeight: '800',
+        fontSize: moderateScale(17),
+        fontWeight: '700',
         color: '#1E293B',
     },
     statLabel: {
-        fontSize: moderateScale(12),
+        fontSize: moderateScale(11),
         color: '#94A3B8',
-        fontWeight: '700',
+        fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
@@ -666,25 +746,25 @@ const styles = StyleSheet.create({
     // Card updates
     cardActions: {
         flexDirection: 'row',
-        gap: 4,
+        gap: 6,
     },
     actionBtn: {
-        padding: 4,
+        padding: 2,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        marginTop: 4,
+        gap: 8,
+        marginTop: 8,
     },
     typeTag: {
         paddingHorizontal: scale(10),
-        paddingVertical: 3,
+        paddingVertical: 4,
         borderRadius: 8,
     },
     typeTagText: {
-        fontSize: moderateScale(12),
-        fontWeight: '800',
+        fontSize: moderateScale(11),
+        fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
@@ -713,30 +793,79 @@ const styles = StyleSheet.create({
 
     // Context Menu
     contextMenu: {
-        backgroundColor: '#FFF',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        marginHorizontal: scale(16),
-        marginBottom: verticalScale(16),
+        marginHorizontal: scale(20),
+        marginBottom: verticalScale(12),
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 3,
     },
     contextOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: scale(14),
-        paddingHorizontal: scale(18),
+        gap: scale(12),
+        paddingHorizontal: scale(16),
         paddingVertical: verticalScale(14),
         borderBottomWidth: 1,
         borderBottomColor: '#F8FAFC',
     },
     contextOptionText: {
         fontSize: moderateScale(15),
-        fontWeight: '700',
+        fontWeight: '600',
         color: '#334155',
     },
     cardFavorited: {
         backgroundColor: '#FFFDF5',
         borderColor: '#FEF3C7',
+        borderWidth: 1,
+    },
+    cardSelected: {
+        borderColor: '#3B82F6',
+        borderWidth: 2,
+        backgroundColor: '#EFF6FF',
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxSelected: {
+        backgroundColor: '#3B82F6',
+        borderColor: '#3B82F6',
+    },
+    fabContainer: {
+        position: 'absolute',
+        bottom: verticalScale(30),
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 100,
+    },
+    fab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#3B82F6',
+        paddingHorizontal: scale(24),
+        paddingVertical: verticalScale(16),
+        borderRadius: 30,
+        shadowColor: '#3B82F6',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 10,
+        gap: 8,
+    },
+    fabText: {
+        color: '#FFF',
+        fontSize: moderateScale(16),
+        fontWeight: '700',
     },
 });

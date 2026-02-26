@@ -16,11 +16,15 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { MedicineAnalysis, translateBatch, translateText } from '../services/gemini';
 import { LANGUAGES, Language } from '../services/languages';
 import { SavedScan } from '../services/storage';
+import { updateMedicationInventory } from '../services/medicationStorage';
 import { moderateScale, scale, verticalScale } from '../utils/responsive';
 
 export default function MedicineDetailsScreen() {
@@ -38,6 +42,12 @@ export default function MedicineDetailsScreen() {
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedMeds, setTranslatedMeds] = useState<Record<number, { name: string; purpose: string; warnings: string }>>({});
+
+  // Inventory State
+  const [showInventorySheet, setShowInventorySheet] = useState(false);
+  const [editingMedIndex, setEditingMedIndex] = useState<number | null>(null);
+  const [inventoryInput, setInventoryInput] = useState('');
+  const [doseInput, setDoseInput] = useState('');
 
   // Effect to handle batch translation when language changes
   useEffect(() => {
@@ -161,6 +171,39 @@ export default function MedicineDetailsScreen() {
     Alert.alert('Success', `Reminder set for ${hours % 12 || 12}:${minutes.toString().padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}.`);
   };
 
+  const handleOpenInventory = (index: number) => {
+    setEditingMedIndex(index);
+    setInventoryInput('');
+    setDoseInput('');
+    setShowInventorySheet(true);
+  };
+
+  const handleSaveInventory = async () => {
+    if (editingMedIndex === null) return;
+    const med = meds[editingMedIndex];
+    
+    // Parse to number with fallback to empty if null/undefined
+    const inventory = parseInt(inventoryInput, 10);
+    let dailyDose = parseInt(doseInput, 10);
+    
+    if (isNaN(inventory) || inventory < 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid number for current pill count.');
+      return;
+    }
+    
+    if (isNaN(dailyDose) || dailyDose < 0) {
+      dailyDose = 1; // Default to 1 if they didn't specify properly
+    }
+    
+    try {
+      await updateMedicationInventory(med.medicineName, inventory, dailyDose);
+      Alert.alert('Success', 'Inventory tracked for ' + med.medicineName);
+      setShowInventorySheet(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update inventory.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -207,6 +250,8 @@ export default function MedicineDetailsScreen() {
           const displayPurpose = tx?.purpose || med.commonUses;
           const displayWarnings = tx?.warnings || med.warnings;
 
+          const displaySimpleInstructions = tx?.simpleInstructions || med.simpleInstructions;
+
           return (
             <View key={index} style={styles.medSection}>
               {/* Medicine Name Card */}
@@ -244,6 +289,28 @@ export default function MedicineDetailsScreen() {
               )}
 
               {/* Detail Cards */}
+              
+              {/* How to Take (Simple Instructions) */}
+              {displaySimpleInstructions && (
+                <View style={[styles.infoCard, { borderColor: '#10B981', borderWidth: 2 }]}>
+                  <View style={styles.cardHeader}>
+                    <Ionicons name="information-circle" size={24} color="#10B981" />
+                    <Text style={[styles.cardTitle, { color: '#047857' }]}>How to Take</Text>
+                    <TouchableOpacity
+                      onPress={() => handleSpeak(displaySimpleInstructions, `instructions-${index}`, index)}
+                      style={styles.ttsBtn}
+                    >
+                      {speakingField === `instructions-${index}`
+                        ? <ActivityIndicator size={18} color="#10B981" />
+                        : <Ionicons name="volume-medium" size={24} color="#10B981" />}
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={[styles.usageText, { fontWeight: '700', color: '#064E3B', fontSize: moderateScale(18) }]}>
+                    {displaySimpleInstructions}
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.infoCard}>
                 <View style={styles.cardHeader}>
                   <MaterialIcons name="description" size={24} color="#0369A1" />
@@ -294,6 +361,23 @@ export default function MedicineDetailsScreen() {
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.usageText}>{med.recommendedTime || 'As specified by doctor'}</Text>
+              </View>
+
+              {/* Inventory Tracking Card */}
+              <View style={[styles.infoCard, { borderColor: '#8B5CF6' }]}>
+                <View style={[styles.cardHeader, { marginBottom: 16 }]}>
+                  <MaterialIcons name="inventory" size={24} color="#8B5CF6" />
+                  <Text style={[styles.cardTitle, { color: '#6D28D9' }]}>Virtual Pillbox</Text>
+                  <TouchableOpacity
+                    onPress={() => handleOpenInventory(index)}
+                    style={{ backgroundColor: '#EDE9FE', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
+                  >
+                    <Text style={{ color: '#6D28D9', fontWeight: '800', fontSize: moderateScale(12) }}>SET INVENTORY</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.usageText, { fontSize: moderateScale(14), color: '#4C1D95' }]}>
+                  Track your physical supply and get "Low Stock" alerts to restock in time.
+                </Text>
               </View>
 
               {/* Prescription Source Details */}
@@ -370,6 +454,62 @@ export default function MedicineDetailsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Inventory Bottom Sheet Overlay Modal */}
+      <Modal visible={showInventorySheet} transparent animationType="slide" onRequestClose={() => setShowInventorySheet(false)}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.pickerOverlay}
+        >
+          <View style={styles.pickerCard}>
+            <View style={styles.pickerHandle} />
+            <Text style={styles.pickerTitle}>Set Inventory</Text>
+            
+            {editingMedIndex !== null && meds[editingMedIndex] && (
+              <ScrollView style={{ paddingHorizontal: 20, marginBottom: 20 }} keyboardShouldPersistTaps="handled">
+                <Text style={{ fontSize: moderateScale(16), fontWeight: '600', color: '#334155', marginBottom: 20, textAlign: 'center' }}>
+                  {meds[editingMedIndex].medicineName}
+                </Text>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Current Pill Count</Text>
+                  <TextInput
+                    style={styles.textInputStyle}
+                    placeholder="e.g. 30"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="number-pad"
+                    value={inventoryInput}
+                    onChangeText={setInventoryInput}
+                  />
+                  <Text style={styles.inputHint}>How many pills do you currently have?</Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Pills Per Day</Text>
+                  <TextInput
+                    style={styles.textInputStyle}
+                    placeholder="e.g. 2"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="number-pad"
+                    value={doseInput}
+                    onChangeText={setDoseInput}
+                  />
+                  <Text style={styles.inputHint}>How many pills do you take daily?</Text>
+                </View>
+
+                <TouchableOpacity style={[styles.btnPrimary, { marginTop: 10, backgroundColor: '#8B5CF6', shadowColor: '#8B5CF6' }]} onPress={handleSaveInventory}>
+                  <Ionicons name="save-outline" size={20} color="#FFF" />
+                  <Text style={styles.btnPrimaryText}>Save Inventory</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setShowInventorySheet(false)} style={styles.btnSecondary}>
+                  <Text style={styles.btnSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -777,4 +917,32 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     fontWeight: '700',
   },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: moderateScale(14),
+    fontWeight: '800',
+    color: '#475569',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  textInputStyle: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: moderateScale(16),
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  inputHint: {
+    fontSize: moderateScale(12),
+    color: '#94A3B8',
+    marginTop: 6,
+    marginLeft: 4,
+  }
 });

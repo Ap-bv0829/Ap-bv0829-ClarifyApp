@@ -175,13 +175,6 @@ export default function App() {
             <Text style={styles.greetingText}>{greeting}</Text>
             <Text style={styles.brandLabel}>CLARIFY.</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <TouchableOpacity onPress={() => router.push('/profile')} activeOpacity={0.8}>
-              <View style={styles.profileBtn}>
-                <Ionicons name="person-outline" size={20} color="#334155" />
-              </View>
-            </TouchableOpacity>
-          </View>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.statusRow}>

@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Use the same API key as the medicine scanner
-const API_KEY = 'AIzaSyCfm3mfhrOskLTnij3IXBW_e8enC5StXqg';
-const genAI = new GoogleGenerativeAI(API_KEY);
+const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(API_KEY || '');
 
 /**
  * Translates Tagalog/Filipino text to English using Google Gemini AI

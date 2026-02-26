@@ -234,8 +234,12 @@ export default function Emergency() {
 
     // --- Voice Recognition Logic ---
 
+    // Keep UI state in sync with native module
+    useSpeechRecognitionEvent('start', () => setIsListening(true));
+    useSpeechRecognitionEvent('end', () => setIsListening(false));
+
     useSpeechRecognitionEvent('result', (event) => {
-        if (!isListening || sosCountdown !== null) return;
+        if (sosCountdown !== null) return;
         const transcript = event.results[0]?.transcript.toLowerCase() || '';
         const detectedKeyword = DISTRESS_KEYWORDS.find(keyword => transcript.includes(keyword));
         if (detectedKeyword) {
@@ -244,9 +248,12 @@ export default function Emergency() {
     });
 
     useSpeechRecognitionEvent('error', (event) => {
-        if (isListening && event.error === 'not-allowed') {
-            setIsListening(false);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
             Alert.alert('Permission Denied', 'Microphone access is needed for auto-detection.');
+        } else if (event.error !== 'no-speech') {
+            console.log('Speech error:', event.error, event.message);
+            Alert.alert('Speech Recognition Error', `${event.error}: ${event.message || 'Unknown error'}`);
         }
     });
 
@@ -258,15 +265,19 @@ export default function Emergency() {
     const startAutoDetection = async () => {
         try {
             await startListening();
-            setIsListening(true);
             speakText('Emergency listening active.');
         } catch (error) {
+            setIsListening(false);
             Alert.alert('Error', 'Could not start voice detection.');
         }
     };
 
     const stopAutoDetection = async () => {
-        await stopListening();
+        try {
+            await stopListening();
+        } catch (e) {
+            console.log('Error stopping voice detection', e);
+        }
         setIsListening(false);
     };
 
@@ -370,6 +381,20 @@ export default function Emergency() {
                 </Animated.View>
             )}
 
+            {/* Application Header */}
+            <View style={styles.header}>
+                <View style={styles.headerRow}>
+                    <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+                        <View style={styles.headerBtn}>
+                            <Ionicons name="arrow-back" size={24} color="#334155" />
+                        </View>
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.headerTitle}>Emergency</Text>
+                    </View>
+                </View>
+            </View>
+
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Hero Header (SOS + controls) */}
                 <View style={styles.stickyHeader}>
@@ -392,8 +417,8 @@ export default function Emergency() {
                             activeOpacity={0.8}
                         >
                             <RNAnimated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                                <View style={[styles.controlIconWrap, { backgroundColor: isListening ? 'rgba(255,255,255,0.2)' : '#F1F5F9' }]}>
-                                    <Ionicons name={isListening ? "mic" : "mic-off"} size={24} color={isListening ? "#FFF" : "#334155"} />
+                                <View style={[styles.controlIconWrap, isListening && { backgroundColor: '#D1FAE5' }]}>
+                                    <Ionicons name={isListening ? "mic" : "mic-off"} size={24} color={isListening ? "#047857" : "#334155"} />
                                 </View>
                             </RNAnimated.View>
                             <Text style={[styles.controlTitle, isListening && styles.textWhite]}>Auto-SOS</Text>
@@ -406,12 +431,12 @@ export default function Emergency() {
                             activeOpacity={0.8}
                         >
                             <RNAnimated.View style={{ transform: [{ scale: sirenAnim }] }}>
-                                <View style={[styles.controlIconWrap, { backgroundColor: isSirenActive ? 'rgba(255,255,255,0.2)' : '#F1F5F9' }]}>
-                                    <Ionicons name="megaphone" size={24} color={isSirenActive ? "#FFF" : "#334155"} />
+                                <View style={[styles.controlIconWrap, isSirenActive && { backgroundColor: '#FECACA' }]}>
+                                    <Ionicons name="megaphone" size={24} color={isSirenActive ? "#B91C1C" : "#334155"} />
                                 </View>
                             </RNAnimated.View>
-                            <Text style={[styles.controlTitle, isSirenActive && styles.textWhite]}>Loud Siren</Text>
-                            <Text style={[styles.controlSub, isSirenActive && styles.textWhiteSub]}>{isSirenActive ? "ACTIVE" : "Tap to play"}</Text>
+                            <Text style={[styles.controlTitle, isSirenActive && { color: '#991B1B' }]}>Loud Siren</Text>
+                            <Text style={[styles.controlSub, isSirenActive && { color: '#7F1D1D' }]}>{isSirenActive ? "ACTIVE" : "Tap to play"}</Text>
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
@@ -561,6 +586,19 @@ export default function Emergency() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9FAFB' },
+    header: {
+        paddingTop: 48,
+        paddingBottom: 4,
+        paddingHorizontal: 20,
+        backgroundColor: '#F9FAFB',
+    },
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    headerBtn: {
+        width: 44, height: 44, borderRadius: 14,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    headerTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B' },
     content: {
         flex: 1,
         backgroundColor: '#F9FAFB',
@@ -575,7 +613,8 @@ const styles = StyleSheet.create({
     // SOS Section
     sosSection: {
         alignItems: 'center',
-        marginBottom: 80,
+        marginBottom: 60,
+        marginTop: 20,
     },
     sosButton: {
         alignItems: 'center',
@@ -596,11 +635,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#EF4444',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#EF4444',
-        shadowOpacity: 0.3,
-        shadowRadius: 15,
-        shadowOffset: { height: 6, width: 0 },
-        elevation: 12,
+        borderWidth: 4,
+        borderColor: '#FCA5A5',
+        shadowColor: '#DC2626',
+        shadowOpacity: 0.35,
+        shadowRadius: 20,
+        shadowOffset: { height: 8, width: 0 },
+        elevation: 16,
         zIndex: 10,
     },
     sosText: {
@@ -619,7 +660,7 @@ const styles = StyleSheet.create({
     },
 
     // Controls Row
-    controlsRow: { flexDirection: 'row', gap: 16, marginBottom: 32 },
+    controlsRow: { flexDirection: 'row', gap: 16, marginBottom: 32, paddingHorizontal: 20 },
     controlCard: {
         flex: 1,
         backgroundColor: '#FFFFFF',
@@ -628,14 +669,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        shadowColor: '#000',
-        shadowOpacity: 0.02,
-        shadowRadius: 10,
-        elevation: 2,
+        borderColor: '#E2E8F0',
     },
-    controlActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
-    sirenActive: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+    controlActive: { borderColor: '#10B981', backgroundColor: '#F0FDF4' },
+    sirenActive: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
     controlIconWrap: {
         width: 60,
         height: 60,
@@ -643,11 +680,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 12,
+        backgroundColor: '#F8FAFC',
     },
     controlTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
     controlSub: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-    textWhite: { color: '#FFF' },
-    textWhiteSub: { color: 'rgba(255,255,255,0.85)' },
+    textWhite: { color: '#0F766E' }, // Active SOS Text
+    textWhiteSub: { color: '#047857' }, // Active SOS Sub
 
     // Medical ID
     medicalCard: {
@@ -655,12 +693,9 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         padding: 24,
         marginBottom: 32,
+        marginHorizontal: 20,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        shadowColor: '#000',
-        shadowOpacity: 0.02,
-        shadowRadius: 10,
-        elevation: 2,
+        borderColor: '#E2E8F0',
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -712,19 +747,21 @@ const styles = StyleSheet.create({
     bloodTypeBold: { color: '#EF4444', fontSize: 18, fontWeight: '900' },
 
     // Contacts
-    section: { marginBottom: 20 },
+    section: { marginBottom: 20, marginHorizontal: 20 },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     sectionTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', letterSpacing: -0.5 },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: '#334155',
+        backgroundColor: '#F8FAFC',
         paddingHorizontal: 16,
         paddingVertical: 10,
-        borderRadius: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
-    addButtonText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+    addButtonText: { fontSize: 14, fontWeight: '700', color: '#334155' },
     addForm: {
         backgroundColor: '#FFFFFF',
         padding: 24,
@@ -732,7 +769,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         gap: 12,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
     },
     input: {
         backgroundColor: '#F8FAFC',
@@ -763,16 +800,18 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
     },
     contactIcon: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: '#F8FAFC',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
     contactInitial: {
         fontSize: 16,

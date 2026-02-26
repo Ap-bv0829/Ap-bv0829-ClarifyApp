@@ -46,10 +46,10 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="medications" options={{ headerShown: false }} />
-        <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="scan-history" options={{ headerShown: false }} />
         <Stack.Screen name="pharmacy-finder" options={{ headerShown: false }} />
-        <Stack.Screen name="medicine-details" options={{ presentation: 'modal', title: 'Medicine Details' }} />
+        <Stack.Screen name="medicine-details" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="interaction-result" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

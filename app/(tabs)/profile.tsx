@@ -16,7 +16,7 @@ import {
     View,
 } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { moderateScale, scale, verticalScale } from '../utils/responsive';
+import { moderateScale, scale, verticalScale } from '../../utils/responsive';
 
 const PROFILE_KEY = 'user_profile';
 
@@ -78,12 +78,14 @@ const styles = StyleSheet.create({
         width: scale(80),
         height: scale(80),
         borderRadius: scale(28),
-        backgroundColor: '#F1F5F9',
+        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
         marginBottom: verticalScale(12),
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 12,
+        elevation: 3,
     },
     avatarText: {
         fontSize: moderateScale(28),
@@ -103,31 +105,14 @@ const styles = StyleSheet.create({
     },
     pillRow: { flexDirection: 'row', gap: scale(6), marginTop: verticalScale(8) },
     pill: {
-        backgroundColor: '#F1F5F9',
+        backgroundColor: '#F8FAFC',
         paddingHorizontal: scale(10),
-        paddingVertical: verticalScale(3),
+        paddingVertical: verticalScale(4),
         borderRadius: 20,
     },
     pillText: { fontSize: moderateScale(14), fontWeight: '700', color: '#64748B' },
     body: { flex: 1 },
     bodyContent: { padding: scale(20), paddingTop: verticalScale(20) },
-    editCta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-        padding: scale(16),
-        borderRadius: 16,
-        marginBottom: verticalScale(20),
-        gap: scale(10),
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-    },
-    editCtaText: {
-        flex: 1,
-        fontSize: moderateScale(15),
-        fontWeight: '600',
-        color: '#334155',
-    },
     saveBtnRow: { flexDirection: 'row', gap: scale(10), marginBottom: verticalScale(20) },
     saveBtn: {
         flex: 1,
@@ -152,17 +137,22 @@ const styles = StyleSheet.create({
     },
     cancelBtnText: { fontSize: moderateScale(14), fontWeight: '600', color: '#64748B' },
     logoutBtn: {
-        marginTop: verticalScale(16),
+        marginTop: verticalScale(8),
+        marginBottom: verticalScale(16),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: scale(8),
-        paddingVertical: verticalScale(12),
+        paddingVertical: verticalScale(14),
+        backgroundColor: '#FEF2F2',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
     },
     logoutText: {
         fontSize: moderateScale(14),
         fontWeight: '700',
-        color: '#EF4444',
+        color: '#DC2626',
     },
     sectionLabel: {
         fontSize: moderateScale(13),
@@ -178,8 +168,10 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginBottom: verticalScale(20),
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOpacity: 0.02,
+        shadowRadius: 10,
+        elevation: 2,
     },
     field: {
         flexDirection: 'row',
@@ -405,16 +397,8 @@ export default function ProfileScreen() {
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Edit / Save CTA */}
-                    {!isEditing ? (
-                        <Animated.View entering={FadeInUp.duration(400)}>
-                            <TouchableOpacity style={styles.editCta} onPress={() => setIsEditing(true)} activeOpacity={0.85}>
-                                <Ionicons name="create-outline" size={18} color="#334155" />
-                                <Text style={styles.editCtaText}>Edit Profile</Text>
-                                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
-                            </TouchableOpacity>
-                        </Animated.View>
-                    ) : (
+                    {/* Save/Cancel CTA */}
+                    {isEditing && (
                         <Animated.View entering={FadeInUp.duration(400)} style={styles.saveBtnRow}>
                             <TouchableOpacity style={styles.saveBtn} onPress={saveProfile} activeOpacity={0.85} disabled={isSaving}>
                                 <Ionicons name="checkmark-circle" size={20} color="#FFF" />
@@ -425,13 +409,6 @@ export default function ProfileScreen() {
                             </TouchableOpacity>
                         </Animated.View>
                     )}
-
-                    <Animated.View entering={FadeInUp.duration(400).delay(200)}>
-                        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
-                            <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-                            <Text style={styles.logoutText}>Log out</Text>
-                        </TouchableOpacity>
-                    </Animated.View>
 
                     {/* Personal */}
                     <Animated.View entering={FadeInUp.duration(400).delay(100)}>
@@ -472,6 +449,14 @@ export default function ProfileScreen() {
                             {F('Contact Person', 'emergencyContact', 'people-outline', 'Maria Dela Cruz')}
                             {F('Phone', 'emergencyPhone', 'call-outline', '09XX XXX XXXX', 'phone-pad')}
                         </View>
+                    </Animated.View>
+
+                    {/* Log Out */}
+                    <Animated.View entering={FadeInUp.duration(400).delay(500)}>
+                        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+                            <Ionicons name="log-out-outline" size={18} color="#DC2626" />
+                            <Text style={styles.logoutText}>Log out</Text>
+                        </TouchableOpacity>
                     </Animated.View>
 
                     <View style={{ height: verticalScale(40) }} />

@@ -238,6 +238,24 @@ export default function MedicationsScreen() {
                                         <View style={styles.medCardHeaderInfo}>
                                             <Text style={styles.medName}>{med.analysis.medicineName}</Text>
                                             <Text style={styles.medDosage}>{med.analysis.dosage}</Text>
+                                            
+                                            {med.inventoryCount !== undefined && med.dailyDoseCount !== undefined && (
+                                                <View style={styles.inventoryStatusRow}>
+                                                    <View style={[
+                                                        styles.stockBadge, 
+                                                        med.inventoryCount < (med.dailyDoseCount * 5) ? styles.stockBadgeLow : styles.stockBadgeGood
+                                                    ]}>
+                                                        <View style={[styles.authDot, { backgroundColor: med.inventoryCount < (med.dailyDoseCount * 5) ? '#DC2626' : '#059669' }]} />
+                                                        <Text style={[styles.stockBadgeText, { color: med.inventoryCount < (med.dailyDoseCount * 5) ? '#991B1B' : '#065F46' }]}>
+                                                            {med.inventoryCount} pills left
+                                                        </Text>
+                                                    </View>
+                                                    {med.inventoryCount < (med.dailyDoseCount * 5) && (
+                                                        <Text style={styles.lowStockWarningText}>⚠ Low Stock</Text>
+                                                    )}
+                                                </View>
+                                            )}
+
                                             {fraud && (
                                                 <View style={[
                                                     styles.authBadge,
@@ -288,6 +306,18 @@ export default function MedicationsScreen() {
                                                     day: 'numeric'
                                                 })}
                                             </Text>
+
+                                            {/* Restock Button overlay specifically for Low Stock items */}
+                                            {med.inventoryCount !== undefined && med.dailyDoseCount !== undefined && med.inventoryCount < (med.dailyDoseCount * 5) && (
+                                                <TouchableOpacity
+                                                    style={styles.restockButton}
+                                                    onPress={() => router.push('/pharmacy-finder')}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Ionicons name="cart" size={18} color="#FFF" />
+                                                    <Text style={styles.restockText}>Restock Now (Find Pharmacy)</Text>
+                                                </TouchableOpacity>
+                                            )}
 
                                             <TouchableOpacity
                                                 style={styles.discontinueButton}
@@ -671,4 +701,56 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#DC2626',
     },
+    inventoryStatusRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+        gap: 8,
+    },
+    stockBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        gap: 4,
+        borderWidth: 1,
+    },
+    stockBadgeGood: {
+        backgroundColor: '#D1FAE5',
+        borderColor: '#34D399',
+    },
+    stockBadgeLow: {
+        backgroundColor: '#FEE2E2',
+        borderColor: '#F87171',
+    },
+    stockBadgeText: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    lowStockWarningText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#DC2626',
+    },
+    restockButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#8B5CF6',
+        padding: 12,
+        borderRadius: 12,
+        marginTop: 20,
+        gap: 8,
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    restockText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFF',
+    }
 });

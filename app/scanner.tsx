@@ -363,6 +363,7 @@ export default function Scanner() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [flash, setFlash] = useState(false);
+    const [scanMode, setScanMode] = useState<'pill' | 'prescription'>('pill');
 
     // UI State
     const [showTimePicker, setShowTimePicker] = useState(false);
@@ -591,7 +592,7 @@ export default function Scanner() {
 
         try {
             // 1. Identification
-            const analysis = await analyzeMedicineImage(photo);
+            const analysis = await analyzeMedicineImage(photo, scanMode);
             setResults(analysis);
             await saveScan(analysis, photo);
 
@@ -1003,9 +1004,11 @@ export default function Scanner() {
                         results.length === 0 && !error && !isAnalyzing && (
                             <View style={styles.bottomActions}>
                                 <TouchableOpacity style={styles.largeFab} onPress={identifyMedicine}>
-                                    <Ionicons name="scan" size={32} color="#FFF" />
+                                    <Ionicons name={scanMode === 'prescription' ? "document-text" : "scan"} size={32} color="#FFF" />
                                 </TouchableOpacity>
-                                <Text style={styles.instructionText}>Tap to identify</Text>
+                                <Text style={styles.instructionText}>
+                                    {scanMode === 'prescription' ? 'Tap to read prescription' : 'Tap to identify pill or box'}
+                                </Text>
                             </View>
                         )
                     }
@@ -1021,8 +1024,25 @@ export default function Scanner() {
                     />
                     {/* Controls Overlay */}
                     <SafeAreaView style={styles.overlayContainer}>
-                        {/* Top Bar - No Back Arrow as requested, just empty or flash controls if we added them */}
-                        <View style={styles.headerBar} />
+                        {/* Top Bar - Mode Toggle */}
+                        <View style={styles.headerBar}>
+                            <View style={styles.modeToggleContainer}>
+                                <TouchableOpacity 
+                                    style={[styles.modeToggleBtn, scanMode === 'pill' && styles.modeToggleActive]}
+                                    onPress={() => setScanMode('pill')}
+                                >
+                                    <MaterialIcons name="medication" size={16} color={scanMode === 'pill' ? '#0369A1' : '#FFF'} />
+                                    <Text style={[styles.modeToggleText, scanMode === 'pill' && styles.modeToggleTextActive]}>Pills</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={[styles.modeToggleBtn, scanMode === 'prescription' && styles.modeToggleActive]}
+                                    onPress={() => setScanMode('prescription')}
+                                >
+                                    <Ionicons name="document-text" size={16} color={scanMode === 'prescription' ? '#0369A1' : '#FFF'} />
+                                    <Text style={[styles.modeToggleText, scanMode === 'prescription' && styles.modeToggleTextActive]}>Prescription</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
 
                         {/* Bottom Controls */}
                         <View style={styles.bottomControls}>
@@ -1115,10 +1135,35 @@ const styles = StyleSheet.create({
     overlayContainer: { flex: 1, justifyContent: 'space-between' },
     headerBar: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         paddingHorizontal: scale(20),
-        paddingTop: verticalScale(10),
+        paddingTop: verticalScale(20),
         zIndex: 10
+    },
+    modeToggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderRadius: 20,
+        padding: 4,
+    },
+    modeToggleBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        gap: 6,
+    },
+    modeToggleActive: {
+        backgroundColor: '#FFF',
+    },
+    modeToggleText: {
+        color: '#FFF',
+        fontSize: moderateScale(14),
+        fontWeight: '600',
+    },
+    modeToggleTextActive: {
+        color: '#0369A1',
     },
     topOverlay: {
         position: 'absolute',

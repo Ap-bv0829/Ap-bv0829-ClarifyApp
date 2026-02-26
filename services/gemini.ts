@@ -97,6 +97,7 @@ export interface MedicineAnalysis {
     commonUses: string;
     dosage: string;
     warnings: string;
+    sideEffects?: string;
     recommendedTime?: string; // Format: "HH:MM" 24-hour
     foodWarnings: string[]; // Foods/drinks to avoid
     affordability?: AffordabilityInfo; // Philippines-specific affordability info
@@ -108,6 +109,7 @@ export interface MedicineAnalysis {
     patientAge?: string; // Patient's age if visible
     patientSex?: string; // Patient's sex (M/F) if visible
     fraudDetection?: FraudDetection; // Prescription authenticity analysis
+    simpleInstructions?: string; // VERY IMPORTANT: If this is a prescription label, translate any complex medical abbreviations (like '1 tab PO qd pc') into extremely simple, plain English instructions (e.g., 'Take 1 pill every morning after meals').
 }
 
 export interface FraudDetection {
@@ -209,9 +211,10 @@ async function uriToBase64(uri: string): Promise<string> {
 /**
  * Analyzes an image of medicine using Google Gemini Vision API
  * @param imageUri - Local file URI of the captured image
+ * @param mode - Optional. If 'prescription', instructs the AI to focus on translating complex labels and handwriting. 
  * @returns Array of structured information about the identified medicines
  */
-export async function analyzeMedicineImage(imageUri: string): Promise<MedicineAnalysis[]> {
+export async function analyzeMedicineImage(imageUri: string, mode: 'pill' | 'prescription' = 'pill'): Promise<MedicineAnalysis[]> {
     try {
         // Read the image file as base64 - Cross-platform helper
         const base64Image = await uriToBase64(imageUri);
@@ -219,15 +222,22 @@ export async function analyzeMedicineImage(imageUri: string): Promise<MedicineAn
         // Initialize the Gemini model
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
+        const preamble = mode === 'prescription' 
+            ? `You are an expert pharmacist AI helping Filipino seniors decode complex prescription notes and labels. 
+Pay EXTREMELY CLOSE ATTENTION to handwriting, medical abbreviations (like 'po qid', 'prn', 'bid'), and doctor instructions.
+Your main goal is to extract the medicine and translate the dosage into plain, simple English instructions.` 
+            : `You are a medical assistant AI specialized in helping Filipino seniors. Analyze this image of medicine/medication.`;
+
         // Create the prompt for medicine identification
-        const prompt = `You are a medical assistant AI specialized in helping Filipino seniors. Analyze this image of medicine/medication.
+        const prompt = `${preamble}
 If there are MULTIPLE medicines in the image, identify ALL of them independently.
 
 Return ONLY a valid JSON ARRAY of objects. Each object should have these exact keys:
 - medicineName: (Brand name and generic name if visible)
 - activeIngredients: (Main active pharmaceutical ingredients)
 - commonUses: (What this medicine is typically used for)
-- dosage: (Typical dosage information if visible on the packaging)
+- dosage: (Raw dosage information if visible on the packaging or prescription)
+- simpleInstructions: (CRITICAL: If the image is a prescription label or note, look for complex medical shorthand like 'po qid', 'prn', 'bid', etc. Translate the dosage into extremely simple, plain English instructions that an elderly person would easily understand. Example: 'Take 1 pill three times a day, as needed for pain'. If no prescription instructions exist, leave as null)
 - warnings: (Important warnings or precautions)
 - recommendedTime: (If a specific time is mentioned like "8 AM" or "bedtime", return it in "HH:MM" 24-hour format. E.g., "08:00" or "22:00". If no specific time is mentioned, return null)
 - foodWarnings: (Array of foods/drinks to avoid with this medication. Examples: ["Grapefruit", "Alcohol", "Dairy products", "High-Vitamin K foods (spinach, kale)"]. If no specific food interactions, return empty array [])
@@ -305,11 +315,12 @@ function parseMedicineResponse(text: string): MedicineAnalysis[] {
         const items = Array.isArray(parsed) ? parsed : [parsed];
 
         for (const item of items) {
-            const medicine = {
+            const medicine: MedicineAnalysis = {
                 medicineName: item.medicineName || 'Unknown Medicine',
                 activeIngredients: item.activeIngredients || 'Not identified',
                 commonUses: item.commonUses || 'Not available',
                 dosage: item.dosage || 'Not visible',
+                simpleInstructions: item.simpleInstructions || undefined,
                 warnings: item.warnings || 'Consult a doctor',
                 recommendedTime: item.recommendedTime || undefined,
                 foodWarnings: Array.isArray(item.foodWarnings) ? item.foodWarnings : [],
@@ -353,6 +364,7 @@ function parseMedicineResponse(text: string): MedicineAnalysis[] {
             activeIngredients: 'Could not structure the data',
             commonUses: 'Please try again',
             dosage: '',
+            simpleInstructions: '',
             warnings: text.substring(0, 100) + '...', // Show raw text snippet
             foodWarnings: [],
         }];
@@ -475,13 +487,14 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delayMs = 5000
 }
 
 export async function translateBatch(
-    medicines: Array<{ medicineName: string; commonUses: string; warnings: string | string[] }>,
+    medicines: Array<{ medicineName: string; commonUses: string; warnings: string | string[]; simpleInstructions?: string }>,
     targetLanguage: string
-): Promise<Array<{ name: string; purpose: string; warnings: string }>> {
+): Promise<Array<{ name: string; purpose: string; warnings: string; simpleInstructions?: string }>> {
     const fallback = medicines.map(m => ({
         name: m.medicineName,
         purpose: m.commonUses,
         warnings: Array.isArray(m.warnings) ? m.warnings.join('. ') : m.warnings,
+        simpleInstructions: m.simpleInstructions,
     }));
 
     if (targetLanguage.toLowerCase().startsWith('english')) return fallback;
@@ -494,6 +507,7 @@ export async function translateBatch(
             name: m.medicineName,
             purpose: m.commonUses,
             warnings: Array.isArray(m.warnings) ? m.warnings.join('. ') : m.warnings,
+            ...(m.simpleInstructions && { simpleInstructions: m.simpleInstructions }),
         }));
 
         // IMPORTANT: The prompt explicitly instructs Gemini to keep JSON keys in English,
@@ -501,9 +515,9 @@ export async function translateBatch(
         // which breaks parsing and silently falls back to English.
         const prompt = `You are a medical translator. Translate only the STRING VALUES (not the keys) in the JSON array below into ${targetLanguage}.
 RULES:
-- Keep all JSON keys exactly as-is in English: "id", "name", "purpose", "warnings"
+- Keep all JSON keys exactly as-is in English: "id", "name", "purpose", "warnings", "simpleInstructions"
 - The "id" field must remain an integer (do not translate it)
-- Translate ONLY the values of "name", "purpose", and "warnings"
+- Translate ONLY the values of "name", "purpose", "warnings", and "simpleInstructions"
 - Use natural, simple language suitable for elderly people
 - Return ONLY the completed JSON array — no markdown, no code fences, no explanation
 
@@ -514,12 +528,17 @@ ${JSON.stringify(payload, null, 2)}`;
         const raw = result.response.text().trim()
             .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-        const parsed: Array<{ id: number; name: string; purpose: string; warnings: string }> = JSON.parse(raw);
+        const parsed: Array<{ id: number; name: string; purpose: string; warnings: string; simpleInstructions?: string }> = JSON.parse(raw);
 
         return medicines.map((_, i) => {
             const found = parsed.find(p => p.id === i);
             if (found && found.name && found.purpose) {
-                return { name: found.name, purpose: found.purpose, warnings: found.warnings || fallback[i].warnings };
+                return { 
+                    name: found.name, 
+                    purpose: found.purpose, 
+                    warnings: found.warnings || fallback[i].warnings,
+                    simpleInstructions: found.simpleInstructions || fallback[i].simpleInstructions 
+                };
             }
             return fallback[i];
         });

@@ -14,6 +14,8 @@ export interface MedicationRecord {
     refillDate?: Date;
     notes?: string;
     lastTaken?: Date;
+    inventoryCount?: number;
+    dailyDoseCount?: number;
 }
 
 export interface DailySchedule {
@@ -120,10 +122,40 @@ export async function markMedicationTaken(id: string): Promise<void> {
 
         if (index !== -1) {
             medications[index].lastTaken = new Date();
+            // Auto-decrement inventory
+            if (medications[index].inventoryCount !== undefined && medications[index].inventoryCount! > 0) {
+                // Determine how much to decrement based on dosage or just 1 by default if they take it per schedule 
+                // Assumes 1 dose = 1 decrement per 'taken' action
+                medications[index].inventoryCount! -= 1; 
+            }
             await AsyncStorage.setItem(MEDICATION_STORAGE_KEY, JSON.stringify(medications));
         }
     } catch (error) {
         console.error('Error marking medication as taken:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update medication inventory
+ */
+export async function updateMedicationInventory(
+    medicineName: string,
+    inventoryCount: number,
+    dailyDoseCount: number
+): Promise<void> {
+    try {
+        const medications = await getAllMedications();
+        // Find the active medication by name to update
+        const index = medications.findIndex(med => med.analysis.medicineName === medicineName && med.status === 'active');
+
+        if (index !== -1) {
+            medications[index].inventoryCount = inventoryCount;
+            medications[index].dailyDoseCount = dailyDoseCount;
+            await AsyncStorage.setItem(MEDICATION_STORAGE_KEY, JSON.stringify(medications));
+        }
+    } catch (error) {
+        console.error('Error updating medication inventory:', error);
         throw error;
     }
 }
